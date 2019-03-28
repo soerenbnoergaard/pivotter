@@ -21,7 +21,59 @@ from collections import OrderedDict
 
 from tkinter import filedialog
 
-DEBUG = True
+DEBUG = False
+
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+    import os
+    import msvcrt
+
+    GENERIC_READ = 0x80000000
+    GENERIC_WRITE = 0x40000000
+
+    OPEN_EXISTING = 3
+    OPEN_ALWAYS = 4
+
+    ACCESS_MODES = {
+        "r": GENERIC_READ,
+        "w": GENERIC_WRITE,
+        "r+": (GENERIC_READ|GENERIC_WRITE)
+    }
+
+    OPEN_MODES = {
+        "r": OPEN_EXISTING,
+        "w": OPEN_ALWAYS,
+        "r+": OPEN_ALWAYS,
+    }
+
+    def open_file_nonblocking(filename, access):
+        # Removes the b for binary access.
+        internal_access = access.replace("b", "")
+        access_mode = ACCESS_MODES[internal_access]
+        open_mode = OPEN_MODES[internal_access]
+        handle = wintypes.HANDLE(ctypes.windll.kernel32.CreateFileW(
+            wintypes.LPWSTR(filename),
+            wintypes.DWORD(access_mode),
+            wintypes.DWORD(2|1),  # File share read and write
+            ctypes.c_void_p(0),
+            wintypes.DWORD(open_mode),
+            wintypes.DWORD(0),
+            wintypes.HANDLE(0)
+        ))
+
+        try:
+            fd = msvcrt.open_osfhandle(handle.value, 0)
+        except OverflowError as exc:
+            # Python 3.X
+            raise OSError("Failed to open file.") from None
+            # Python 2
+            # raise OSError("Failed to open file.")
+
+        return os.fdopen(fd, access)
+else:
+    def open_file_nonblocking(filename, access):
+        return open(filename, access)
 
 class Pivot(object):
     def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None):
@@ -172,7 +224,7 @@ class Gui(tk.Frame):
         self.filename = filename
 
         # Open the input file
-        with open(self.filename, "r") as f:
+        with open_file_nonblocking(self.filename, "r") as f:
             self.header = [X.strip() for X in f.readline().split(",")]
 
         self.header.append("")
@@ -282,7 +334,7 @@ class Gui(tk.Frame):
         p = self.pivot
 
         n = 0
-        with open(self.filename, "r") as f:
+        with open_file_nonblocking(self.filename, "r") as f:
             while True:
                 line = f.readline()
                 if line:
