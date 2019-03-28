@@ -4,14 +4,19 @@ matplotlib.use("TkAgg")
 
 import os
 import sys
-import pprint
 import json
+import time
+import pprint
+import threading
 
 import numpy as np
+import tkinter as tk
 import matplotlib.pyplot as plt
 
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 class Pivot(object):
-    def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5):
+    def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None):
         self.x = x
         self.y = y
         self.hue = hue
@@ -34,7 +39,10 @@ class Pivot(object):
         self.xy = {
         }
 
-        self.fig = plt.figure()
+        if fig is not None:
+            self.fig = fig
+        else:
+            self.fig = plt.figure()
 
     def __repr__(self):
         s = ""
@@ -111,13 +119,14 @@ class Pivot(object):
         h.set_xdata([X for X in h.get_xdata()] + [x])
         h.set_ydata([Y for Y in h.get_ydata()] + [y])
 
-        # self.fig.tight_layout()
+        self.fig.canvas.draw_idle()
+        self.fig.tight_layout()
 
     def update_figure(self):
         M, N = len(self.rows), len(self.cols)
 
         self.fig.clear()
-        self.fig.set_size_inches(self.height*self.aspect*N, self.height*M)
+        # self.fig.set_size_inches(self.height*self.aspect*N, self.height*M)
 
         xy = dict.fromkeys(self.rows)
 
@@ -149,16 +158,65 @@ class Pivot(object):
 
         self.xy = xy
 
-def main(input_file):
+class Gui(tk.Frame):
+    def __init__(self, parent):
+        self.parent = parent
+        super().__init__(parent)
+
+        fr_plot = tk.Frame(self)
+
+        # Plot canvas
+        self.fig = plt.Figure(dpi=96)
+        canvas = FigureCanvasTkAgg(self.fig, master=self)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        # Pack frames
+        fr_plot.pack(side=tk.TOP, fill=tk.BOTH)
+
+        # Start pivot plot
+        self.pivot = Pivot(
+            x = "frequency",
+            y = "power",
+            hue = "id",
+            col = "modulation",
+            height = 3,
+            fig = self.fig,
+        )
+
+        t = threading.Thread(target=self.reader)
+        t.start()
+
+    def reader(self):
+        p = self.pivot
+
+        with open("test.csv", "r") as f:
+            rows = [line.rstrip().split(",") for line in f]
+
+        p.parse_header(rows[0])
+        for r in rows[1:]:
+            p.add_point(r)
+            print(r)
+            time.sleep(1)
+            # input()
+
+
+def main():
+    root = tk.Tk()
+    Gui(root).pack(expand=True, fill=tk.BOTH)
+    root.mainloop()
+
+def main_old():
     p = Pivot(
         x = "frequency",
         y = "power",
         hue = "id",
         col = "modulation",
         height = 3,
+        fig = None,
     )
 
-    with open(input_file, "r") as f:
+    with open("test.csv", "r") as f:
         rows = [line.rstrip().split(",") for line in f]
 
     p.parse_header(rows[0])
@@ -167,17 +225,8 @@ def main(input_file):
         print(r)
         # input()
 
-    for row in p.rows:
-        for col in p.cols:
-            for hue in p.hues:
-                print(row, col, hue, p.xy[row][col][hue].get_xdata(), p.xy[row][col][hue].get_ydata())
-
-    # p.plot()
-    # p.fig.canvas.draw()
-    # p.fig.canvas.flush_events()
-    # plt.draw()
-    p.fig.canvas.draw_idle()
     plt.show()
 
 if __name__ == "__main__":
-    main("test.csv")
+    main()
+    # main_old()
