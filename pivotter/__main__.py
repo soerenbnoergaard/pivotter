@@ -1,3 +1,7 @@
+import matplotlib
+
+matplotlib.use("TkAgg")
+
 import os
 import sys
 import pprint
@@ -29,6 +33,8 @@ class Pivot(object):
 
         self.xy = {
         }
+
+        self.fig = plt.figure()
 
     def __repr__(self):
         s = ""
@@ -79,89 +85,77 @@ class Pivot(object):
         col = None if self.col is None else lst[self.col_column]
         hue = None if self.hue is None else lst[self.hue_column]
 
-        self._check_row_key(row)
-        self._check_col_key(col)
-        self._check_hue_key(hue)
+        update_required = False
 
-        self.xy[row][col][hue]["x"].append(x)
-        self.xy[row][col][hue]["y"].append(y)
+        if row not in self.rows:
+            self.rows.append(row)
+            update_required = True
 
-    def plot(self):
+        if col not in self.cols:
+            self.cols.append(col)
+            update_required = True
+
+        if hue not in self.hues:
+            self.hues.append(hue)
+            update_required = True
+
+        # update_required = True
+        if update_required:
+            self.update_figure()
+
+        h = self.xy[row][col][hue]
+
+        h.axes.relim()
+        h.axes.autoscale_view(True, True, True)
+
+        h.set_xdata([X for X in h.get_xdata()] + [x])
+        h.set_ydata([Y for Y in h.get_ydata()] + [y])
+
+        # self.fig.tight_layout()
+
+    def update_figure(self):
         M, N = len(self.rows), len(self.cols)
 
-        fig = plt.figure(figsize=[self.height*self.aspect*N, self.height*M])
+        self.fig.clear()
+        self.fig.set_size_inches(self.height*self.aspect*N, self.height*M)
+
+        xy = dict.fromkeys(self.rows)
 
         i = 0
+        ax = None
         for m, row in enumerate(self.rows):
+            xy[row] = dict.fromkeys(self.cols)
+
             for n, col in enumerate(self.cols):
+                xy[row][col] = dict.fromkeys(self.hues)
+
                 i += 1
-                ax = fig.add_subplot(M, N, i)
+                ax = self.fig.add_subplot(M, N, i, sharex=ax, sharey=ax)
+
                 for k, hue in enumerate(self.hues):
-                    x = self.xy[row][col][hue]["x"]
-                    y = self.xy[row][col][hue]["y"]
-                    ax.plot(x, y, label=hue)
+                    try:
+                        xvalues = self.xy[row][col][hue].get_xdata()
+                        yvalues = self.xy[row][col][hue].get_ydata()
+                    except KeyError:
+                        xvalues = []
+                        yvalues = []
 
-                if row is None and col is None:
-                    title = None
-                elif col is None:
-                    title = "{:s} = {}".format(self.row, row)
-                elif row is not None:
-                    title = "{:s} = {}".format(self.col, col)
-                else:
-                    title = "{:s} = {} | {:s} = {}".format(self.row, row, self.col, col)
+                    xy[row][col][hue], = ax.plot(xvalues, yvalues, label=hue, marker="o")
 
-                ax.set_title(title, fontsize=8)
                 ax.set_xlabel(self.x)
                 ax.set_ylabel(self.y)
-            ax.legend(title=self.hue, fontsize=8, title_fontsize=8)
-        fig.tight_layout()
+                ax.grid(True)
+        ax.legend()
 
-    def _check_row_key(self, row):
-        if row in self.rows:
-            # Row is already in use
-            return
-        
-        self.rows.append(row)
-        
-        # Append an new container for the new row
-        self.xy[row] = dict.fromkeys(self.cols)
-        for col in self.xy[row].keys():
-            self.xy[row][col] = dict.fromkeys(self.hues)
-
-            for hue in self.xy[row][col].keys():
-                self.xy[row][col][hue] = {"x": [], "y": []}
-
-    def _check_col_key(self, col):
-        if col in self.cols:
-            # Row is already in use
-            return
-
-        self.cols.append(col)
-        
-        # Append an new container for the new col
-        for row in self.rows:
-            self.xy[row][col] = dict.fromkeys(self.hues)
-            for hue in self.xy[row][col].keys():
-                self.xy[row][col][hue] = {"x": [], "y": []}
-
-    def _check_hue_key(self, hue):
-        if hue in self.hues:
-            # Row is already in use
-            return
-
-        self.hues.append(hue)
-        
-        # Append an new container for the new hue
-        for row in self.rows:
-            for col in self.cols:
-                self.xy[row][col][hue] = {"x": [], "y": []}
+        self.xy = xy
 
 def main(input_file):
     p = Pivot(
         x = "frequency",
         y = "power",
-        row = "id",
-        hue = "modulation",
+        hue = "id",
+        col = "modulation",
+        height = 3,
     )
 
     with open(input_file, "r") as f:
@@ -170,9 +164,19 @@ def main(input_file):
     p.parse_header(rows[0])
     for r in rows[1:]:
         p.add_point(r)
-        # print(json.dumps(p.xy, indent=4))
+        print(r)
         # input()
-    p.plot()
+
+    for row in p.rows:
+        for col in p.cols:
+            for hue in p.hues:
+                print(row, col, hue, p.xy[row][col][hue].get_xdata(), p.xy[row][col][hue].get_ydata())
+
+    # p.plot()
+    # p.fig.canvas.draw()
+    # p.fig.canvas.flush_events()
+    # plt.draw()
+    p.fig.canvas.draw_idle()
     plt.show()
 
 if __name__ == "__main__":
