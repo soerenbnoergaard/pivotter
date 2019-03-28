@@ -14,6 +14,7 @@ import tkinter as tk
 import matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from collections import OrderedDict
 
 class Pivot(object):
     def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None):
@@ -120,13 +121,11 @@ class Pivot(object):
         h.set_ydata([Y for Y in h.get_ydata()] + [y])
 
         self.fig.canvas.draw_idle()
-        self.fig.tight_layout()
 
     def update_figure(self):
         M, N = len(self.rows), len(self.cols)
 
         self.fig.clear()
-        # self.fig.set_size_inches(self.height*self.aspect*N, self.height*M)
 
         xy = dict.fromkeys(self.rows)
 
@@ -149,12 +148,12 @@ class Pivot(object):
                         xvalues = []
                         yvalues = []
 
-                    xy[row][col][hue], = ax.plot(xvalues, yvalues, label=hue, marker="o")
+                    xy[row][col][hue], = ax.plot(xvalues, yvalues, label=hue)
 
                 ax.set_xlabel(self.x)
                 ax.set_ylabel(self.y)
                 ax.grid(True)
-        ax.legend()
+        ax.legend(title=self.hue, fontsize=8)
 
         self.xy = xy
 
@@ -163,31 +162,85 @@ class Gui(tk.Frame):
         self.parent = parent
         super().__init__(parent)
 
+        fr_inputs = tk.Frame(self)
+        fr_buttons = tk.Frame(self)
         fr_plot = tk.Frame(self)
 
-        # Plot canvas
-        self.fig = plt.Figure(dpi=96)
-        canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.var = OrderedDict([
+            ["x", tk.StringVar()],
+            ["y", tk.StringVar()],
+            ["hue", tk.StringVar()],
+            ["col", tk.StringVar()],
+            ["row", tk.StringVar()],
+        ])
+
+        columns = ["id", "modulation", "frequency", "power", ""]
+
+        self.var["x"].set(columns[0])
+        self.var["y"].set(columns[0])
+
+        # INPUTS
+        for i, (key, value) in enumerate(self.var.items()):
+            tk.Label(fr_inputs, text=key).grid(row=i, column=0, sticky=tk.W)
+            tk.OptionMenu(fr_inputs, value, *columns).grid(row=i, column=1, sticky=tk.W)
+
+        # BUTTONS
+        tk.Button(fr_buttons, text="Start", command=self.on_start).pack(side=tk.LEFT)
+        tk.Button(fr_buttons, text="Stop", command=self.on_stop).pack(side=tk.LEFT)
+        tk.Button(fr_buttons, text="Tight layout", command=self.on_fix_layout).pack(side=tk.LEFT)
+
+        # PLOT CANVAS
+        self.fig = plt.Figure(dpi=100)
+        canvas = FigureCanvasTkAgg(self.fig, master=fr_plot)
         canvas.draw()
-        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
 
         # Pack frames
-        fr_plot.pack(side=tk.TOP, fill=tk.BOTH)
+        fr_inputs.pack(fill=tk.X)
+        fr_buttons.pack(fill=tk.X)
+        fr_plot.pack(fill=tk.BOTH, expand=True)
 
-        # Start pivot plot
+        # Common handles
+        self.pivot = None
+        self.thread = threading.Thread(target=self.loop)
+        self.thread_stop_event = threading.Event()
+
+    def on_start(self):
+        if self.thread.is_alive():
+            print("Thread already running")
+            return
+
+        print("Start")
+
+        x = self.var["x"].get()
+        y = self.var["y"].get()
+        hue = self.var["hue"].get()
+        col = self.var["col"].get()
+        row = self.var["row"].get()
+
         self.pivot = Pivot(
-            x = "frequency",
-            y = "power",
-            hue = "id",
-            col = "modulation",
-            height = 3,
+            x = None if x is "" else x,
+            y = None if y is "" else y,
+            col = None if col is "" else col,
+            row = None if row is "" else row,
+            hue = None if hue is "" else hue,
             fig = self.fig,
         )
 
-        t = threading.Thread(target=self.reader)
-        t.start()
+        self.thread = threading.Thread(target=self.loop)
+        self.thread_stop_event.clear()
+        self.thread.start()
 
-    def reader(self):
+    def on_stop(self):
+        self.thread_stop_event.set()
+        while self.thread.is_alive():
+            time.sleep(0.1)
+
+    def on_fix_layout(self):
+        self.pivot.fig.tight_layout()
+        self.pivot.fig.canvas.draw_idle()
+
+    def loop(self):
         p = self.pivot
 
         with open("test.csv", "r") as f:
@@ -195,14 +248,16 @@ class Gui(tk.Frame):
 
         p.parse_header(rows[0])
         for r in rows[1:]:
+            if self.thread_stop_event.is_set():
+                return
+
             p.add_point(r)
             print(r)
-            time.sleep(1)
-            # input()
-
+            time.sleep(0.5)
 
 def main():
     root = tk.Tk()
+    root.title("Pivotter")
     Gui(root).pack(expand=True, fill=tk.BOTH)
     root.mainloop()
 
