@@ -4,10 +4,12 @@ matplotlib.use("TkAgg")
 
 import os
 import sys
+import csv
 import json
 import time
 import glob
 import pprint
+import random
 import threading
 
 import numpy as np
@@ -18,6 +20,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import OrderedDict
 
 from tkinter import filedialog
+
+DEBUG = True
 
 class Pivot(object):
     def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None):
@@ -165,8 +169,10 @@ class Gui(tk.Frame):
         self.parent = parent
         super().__init__(parent)
 
+        self.filename = filename
+
         # Open the input file
-        with open(filename, "r") as f:
+        with open(self.filename, "r") as f:
             self.header = [X.strip() for X in f.readline().split(",")]
 
         self.header.append("")
@@ -184,12 +190,22 @@ class Gui(tk.Frame):
             ["row", tk.StringVar()],
         ])
 
-        self.var["x"].set(self.header[0])
-        self.var["y"].set(self.header[0])
+        h = self.header
+        N = len(h)
+        if N > 0:
+            self.var["x"].set(self.header[0])
+        if N > 1:
+            self.var["y"].set(self.header[1])
+        if N > 2:
+            self.var["hue"].set(self.header[2])
+        if N > 3:
+            self.var["col"].set(self.header[3])
+        if N > 4:
+            self.var["row"].set(self.header[4])
 
         # OPEN
         tk.Label(fr_open, text="File:").pack(side=tk.LEFT)
-        tk.Label(fr_open, text=filename).pack(side=tk.LEFT)
+        tk.Label(fr_open, text=self.filename).pack(side=tk.LEFT)
 
         # INPUTS
         for i, (key, value) in enumerate(self.var.items()):
@@ -265,19 +281,21 @@ class Gui(tk.Frame):
     def loop(self):
         p = self.pivot
 
-        # TODO: Read real-time data
-        with open("test.csv", "r") as f:
-            rows = [line.rstrip().split(",") for line in f]
+        n = 0
+        with open(self.filename, "r") as f:
+            while True:
+                line = f.readline()
+                if line:
+                    r = [X.strip() for X in line.split(",")]
+                    if n > 0:
+                        if self.thread_stop_event.is_set():
+                            return
+                        p.add_point(r)
+                else:
+                    time.sleep(0.2)
+                n += 1
 
-        for r in rows[1:]:
-            if self.thread_stop_event.is_set():
-                return
-
-            p.add_point(r)
-
-def main():
-    args = sys.argv
-
+def main(args):
     while 1:
         root = tk.Tk()
         root.title("Pivotter")
@@ -295,4 +313,31 @@ def main():
         args = []
 
 if __name__ == "__main__":
-    main()
+    debug_file = "debug.csv"
+    def debug_writer():
+        with open(debug_file, "w") as f:
+            f.write("x,y,a,b\n")
+
+        i = 0
+        while True:
+            with open(debug_file, "a") as f:
+                f.write(",".join([str(X) for X in [
+                    i,
+                    random.randint(10, 15),
+                    random.randint(0, 2),
+                    random.randint(0, 2),
+                ]]) + "\n")
+
+            i += 1
+            time.sleep(1)
+
+    if DEBUG:
+        t = threading.Thread(target=debug_writer)
+        t.daemon = True
+        t.start()
+        del t
+        time.sleep(0.5)
+
+        main(["", debug_file])
+    else:
+        main(sys.argv)
