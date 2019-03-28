@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import time
+import glob
 import pprint
 import threading
 
@@ -15,6 +16,8 @@ import matplotlib.pyplot as plt
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from collections import OrderedDict
+
+from tkinter import filedialog
 
 class Pivot(object):
     def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None):
@@ -158,10 +161,17 @@ class Pivot(object):
         self.xy = xy
 
 class Gui(tk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, filename):
         self.parent = parent
         super().__init__(parent)
 
+        # Open the input file
+        with open(filename, "r") as f:
+            self.header = [X.strip() for X in f.readline().split(",")]
+
+        self.header.append("")
+
+        fr_open = tk.Frame(self)
         fr_inputs = tk.Frame(self)
         fr_buttons = tk.Frame(self)
         fr_plot = tk.Frame(self)
@@ -174,20 +184,23 @@ class Gui(tk.Frame):
             ["row", tk.StringVar()],
         ])
 
-        columns = ["id", "modulation", "frequency", "power", ""]
+        self.var["x"].set(self.header[0])
+        self.var["y"].set(self.header[0])
 
-        self.var["x"].set(columns[0])
-        self.var["y"].set(columns[0])
+        # OPEN
+        tk.Label(fr_open, text="File:").pack(side=tk.LEFT)
+        tk.Label(fr_open, text=filename).pack(side=tk.LEFT)
 
         # INPUTS
         for i, (key, value) in enumerate(self.var.items()):
             tk.Label(fr_inputs, text=key).grid(row=i, column=0, sticky=tk.W)
-            tk.OptionMenu(fr_inputs, value, *columns).grid(row=i, column=1, sticky=tk.W)
+            tk.OptionMenu(fr_inputs, value, *self.header).grid(row=i, column=1, sticky=tk.W)
 
         # BUTTONS
         tk.Button(fr_buttons, text="Start", command=self.on_start).pack(side=tk.LEFT)
         tk.Button(fr_buttons, text="Stop", command=self.on_stop).pack(side=tk.LEFT)
         tk.Button(fr_buttons, text="Tight layout", command=self.on_fix_layout).pack(side=tk.LEFT)
+        tk.Button(fr_buttons, text="Save", command=self.on_save).pack(side=tk.LEFT)
 
         # PLOT CANVAS
         self.fig = plt.Figure(dpi=100)
@@ -196,6 +209,7 @@ class Gui(tk.Frame):
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
 
         # Pack frames
+        fr_open.pack(fill=tk.X)
         fr_inputs.pack(fill=tk.X)
         fr_buttons.pack(fill=tk.X)
         fr_plot.pack(fill=tk.BOTH, expand=True)
@@ -209,8 +223,6 @@ class Gui(tk.Frame):
         if self.thread.is_alive():
             print("Thread already running")
             return
-
-        print("Start")
 
         x = self.var["x"].get()
         y = self.var["y"].get()
@@ -227,6 +239,8 @@ class Gui(tk.Frame):
             fig = self.fig,
         )
 
+        self.pivot.parse_header(self.header)
+
         self.thread = threading.Thread(target=self.loop)
         self.thread_stop_event.clear()
         self.thread.start()
@@ -240,48 +254,45 @@ class Gui(tk.Frame):
         self.pivot.fig.tight_layout()
         self.pivot.fig.canvas.draw_idle()
 
+    def on_save(self):
+        f = filedialog.asksaveasfilename(title="Save figure", filetypes=[("PNG", ".png"), ("SVG", ".svg"), ("PDF", ".pdf")], defaultextension=".png")
+
+        if not f:
+            return
+
+        self.fig.savefig(f)
+
     def loop(self):
         p = self.pivot
 
+        # TODO: Read real-time data
         with open("test.csv", "r") as f:
             rows = [line.rstrip().split(",") for line in f]
 
-        p.parse_header(rows[0])
         for r in rows[1:]:
             if self.thread_stop_event.is_set():
                 return
 
             p.add_point(r)
-            print(r)
-            time.sleep(0.5)
 
 def main():
-    root = tk.Tk()
-    root.title("Pivotter")
-    Gui(root).pack(expand=True, fill=tk.BOTH)
-    root.mainloop()
+    args = sys.argv
 
-def main_old():
-    p = Pivot(
-        x = "frequency",
-        y = "power",
-        hue = "id",
-        col = "modulation",
-        height = 3,
-        fig = None,
-    )
+    while 1:
+        root = tk.Tk()
+        root.title("Pivotter")
 
-    with open("test.csv", "r") as f:
-        rows = [line.rstrip().split(",") for line in f]
+        if (len(args) >= 2) and (os.path.isfile(args[1])):
+            input_file = args[1]
+        else:
+            input_file = filedialog.askopenfilename(title = "Select file", filetypes = (("CSV files", "*.csv"), ("All files", "*.*")))
+            if not input_file:
+                return
 
-    p.parse_header(rows[0])
-    for r in rows[1:]:
-        p.add_point(r)
-        print(r)
-        # input()
-
-    plt.show()
+        Gui(root, input_file).pack(expand=True, fill=tk.BOTH)
+        root.mainloop()
+        
+        args = []
 
 if __name__ == "__main__":
     main()
-    # main_old()
