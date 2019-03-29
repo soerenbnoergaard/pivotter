@@ -336,12 +336,13 @@ class Gui(tk.Frame):
         n = 0
         with open_file_nonblocking(self.filename, "r") as f:
             while True:
+                if self.thread_stop_event.is_set():
+                    return
+
                 line = f.readline()
                 if line:
                     r = [X.strip() for X in line.split(",")]
                     if n > 0:
-                        if self.thread_stop_event.is_set():
-                            return
                         p.add_point(r)
                 else:
                     time.sleep(0.2)
