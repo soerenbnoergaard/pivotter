@@ -1,2 +1,6 @@
 __pycache__
 *.csv
+dist
+*.egg-info
+pivotter/version.py
+.eggs
