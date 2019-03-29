@@ -48,5 +48,5 @@ setup(
     entry_points = {
     },
 
-    zip_safe=False
+    zip_safe=True
 )
