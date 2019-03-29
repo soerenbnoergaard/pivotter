@@ -348,9 +348,15 @@ class Gui(tk.Frame):
                 n += 1
 
 def main(args):
+    try:
+        exec(open("pivotter/version.py").read())
+        version = version
+    except Exception:
+        version = ""
+
     while 1:
         root = tk.Tk()
-        root.title("Pivotter")
+        root.title("Pivotter {:s}".format(version))
 
         if (len(args) >= 2) and (os.path.isfile(args[1])):
             input_file = args[1]
