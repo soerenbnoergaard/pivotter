@@ -350,7 +350,7 @@ class Gui(tk.Frame):
 
 def main(args):
     try:
-        exec(open("pivotter/version.py").read())
+        exec(open("version.py").read())
         version = version
     except Exception:
         version = ""
@@ -362,13 +362,14 @@ def main(args):
         if (len(args) >= 2) and (os.path.isfile(args[1])):
             input_file = args[1]
         else:
-            input_file = filedialog.askopenfilename(title = "Select file", filetypes = (("CSV files", "*.csv"), ("All files", "*.*")))
-            if not input_file:
+            input_file = filedialog.askopenfilename(parent=root, title = "Select file", filetypes = (("CSV files", "*.csv"), ("All files", "*.*")))
+            if not os.path.isfile(input_file):
+                root.quit()
                 return
 
         Gui(root, input_file).pack(expand=True, fill=tk.BOTH)
         root.mainloop()
-        
+
         args = []
 
 if __name__ == "__main__":
