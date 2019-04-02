@@ -120,7 +120,7 @@ class Pivot(object):
         s += "col_column = {}\n".format(self.col_column)
         s += "row_column = {}\n".format(self.row_column)
         return s.rstrip()
-
+    
     def parse_header(self, lst):
         for n, element in enumerate(lst):
             if self.hue == element:
@@ -212,27 +212,31 @@ class Pivot(object):
                 ax.set_xlabel(self.x)
                 ax.set_ylabel(self.y)
                 ax.grid(True)
-        ax.legend(title=self.hue, fontsize=8)
+        ax.legend(title=self.hue)
 
         self.xy = xy
 
 class Gui(tk.Frame):
-    def __init__(self, parent, filename):
+    def __init__(self, parent, filename=None):
         self.parent = parent
         super().__init__(parent)
 
         self.filename = filename
+        self.header = []
+        self.delimiter = ","
+        self.quotechar = '"'
 
-        # Open the input file
-        with open_file_nonblocking(self.filename, "r") as f:
-            self.header = [X.strip() for X in f.readline().split(",")]
+        # Common handles
+        self.pivot = None
+        self.thread = threading.Thread(target=self.loop)
+        self.thread_stop_event = threading.Event()
 
-        self.header.append("")
+        self.parent.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        fr_open = tk.Frame(self)
-        fr_inputs = tk.Frame(self)
-        fr_buttons = tk.Frame(self)
-        fr_plot = tk.Frame(self)
+        self.fr_open = tk.Frame(self)
+        self.fr_inputs = tk.Frame(self)
+        self.fr_buttons = tk.Frame(self)
+        self.fr_plot = tk.Frame(self)
 
         self.var = OrderedDict([
             ["x", tk.StringVar()],
@@ -241,51 +245,74 @@ class Gui(tk.Frame):
             ["col", tk.StringVar()],
             ["row", tk.StringVar()],
         ])
-
-        h = self.header
-        N = len(h)
-        if N > 0:
-            self.var["x"].set(self.header[0])
-        if N > 1:
-            self.var["y"].set(self.header[1])
-        if N > 2:
-            self.var["hue"].set(self.header[2])
-        if N > 3:
-            self.var["col"].set(self.header[3])
-        if N > 4:
-            self.var["row"].set(self.header[4])
+        self.var_filename = tk.StringVar()
 
         # OPEN
-        tk.Label(fr_open, text="File:").pack(side=tk.LEFT)
-        tk.Label(fr_open, text=self.filename).pack(side=tk.LEFT)
+        tk.Label(self.fr_open, text="File:").pack(side=tk.LEFT)
+        tk.Label(self.fr_open, textvariable=self.var_filename).pack(side=tk.LEFT)
+        tk.Button(self.fr_open, text="Open", command=self.on_open).pack(side=tk.LEFT)
 
         # INPUTS
-        for i, (key, value) in enumerate(self.var.items()):
-            tk.Label(fr_inputs, text=key).grid(row=i, column=0, sticky=tk.W)
-            tk.OptionMenu(fr_inputs, value, *self.header).grid(row=i, column=1, sticky=tk.W)
+        # Opdated on Open
+        if self.filename is not None:
+            self.on_open(ask = False)
 
         # BUTTONS
-        tk.Button(fr_buttons, text="Start", command=self.on_start).pack(side=tk.LEFT)
-        tk.Button(fr_buttons, text="Stop", command=self.on_stop).pack(side=tk.LEFT)
-        tk.Button(fr_buttons, text="Tight layout", command=self.on_fix_layout).pack(side=tk.LEFT)
-        tk.Button(fr_buttons, text="Save", command=self.on_save).pack(side=tk.LEFT)
+        tk.Button(self.fr_buttons, text="Start", command=self.on_start).pack(side=tk.LEFT)
+        tk.Button(self.fr_buttons, text="Stop", command=self.on_stop).pack(side=tk.LEFT)
+        tk.Button(self.fr_buttons, text="Tight layout", command=self.on_fix_layout).pack(side=tk.LEFT)
+        tk.Button(self.fr_buttons, text="Save", command=self.on_save).pack(side=tk.LEFT)
 
         # PLOT CANVAS
         self.fig = plt.Figure(dpi=100)
-        canvas = FigureCanvasTkAgg(self.fig, master=fr_plot)
+        canvas = FigureCanvasTkAgg(self.fig, master=self.fr_plot)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
 
         # Pack frames
-        fr_open.pack(fill=tk.X)
-        fr_inputs.pack(fill=tk.X)
-        fr_buttons.pack(fill=tk.X)
-        fr_plot.pack(fill=tk.BOTH, expand=True)
+        self.fr_open.pack(fill=tk.X)
+        self.fr_inputs.pack(fill=tk.X)
+        self.fr_buttons.pack(fill=tk.X)
+        self.fr_plot.pack(fill=tk.BOTH, expand=True)
 
-        # Common handles
+    def on_close(self):
+        self.on_stop()
+        plt.close(self.fig)
+        self.parent.destroy()
+
+    def on_open(self, ask=True):
+        # Stop running thread
+        self.on_stop()
+
+        # Ask for a new input file
+        if ask:
+            new_file = filedialog.askopenfilename(title = "Select file", filetypes = (("CSV files", "*.csv"), ("All files", "*.*")))
+            if os.path.isfile(new_file):
+                self.filename = new_file
+
+        # Update header
+        old_header = self.header.copy()
+
+        with open_file_nonblocking(self.filename, "r") as f:
+            reader = csv.reader(f, delimiter=self.delimiter, quotechar=self.quotechar)
+            self.header = next(reader)
+
+        self.header.append("")
+
+        # Clear state
         self.pivot = None
-        self.thread = threading.Thread(target=self.loop)
-        self.thread_stop_event = threading.Event()
+
+        # Clear optionmenus if the header has changed
+        if set(old_header) != set(self.header):
+            for k in self.var.keys():
+                self.var[k].set("")
+
+        # Update GUI
+        for i, (key, value) in enumerate(self.var.items()):
+            tk.Label(self.fr_inputs, text=key).grid(row=i, column=0, sticky=tk.W)
+            tk.OptionMenu(self.fr_inputs, value, *self.header).grid(row=i, column=1, sticky=tk.W)
+
+        self.var_filename.set(self.filename)
 
     def on_start(self):
         if self.thread.is_alive():
@@ -335,42 +362,36 @@ class Gui(tk.Frame):
 
         n = 0
         with open_file_nonblocking(self.filename, "r") as f:
+            reader = csv.reader(f, delimiter=self.delimiter, quotechar=self.quotechar)
             while True:
                 if self.thread_stop_event.is_set():
                     return
 
-                line = f.readline()
-                if line:
-                    r = [X.strip() for X in line.split(",")]
+                for row in reader:
                     if n > 0:
-                        p.add_point(r)
-                else:
-                    time.sleep(0.2)
-                n += 1
+                        p.add_point(row)
+                    n += 1
+
+                time.sleep(0.2)
 
 def main(args):
+    version_file = os.path.join(os.path.dirname(__file__), "version.py")
     try:
-        exec(open("version.py").read())
-        version = version
-    except Exception:
+        tmp = {}
+        exec(open(version_file).read(), tmp)
+        version = tmp["version"]
+    except:
         version = ""
 
-    while 1:
-        root = tk.Tk()
-        root.title("Pivotter {:s}".format(version))
+    if (len(args) >= 2) and (os.path.isfile(args[1])):
+        input_file = args[1]
+    else:
+        input_file = None
 
-        if (len(args) >= 2) and (os.path.isfile(args[1])):
-            input_file = args[1]
-        else:
-            input_file = filedialog.askopenfilename(parent=root, title = "Select file", filetypes = (("CSV files", "*.csv"), ("All files", "*.*")))
-            if not os.path.isfile(input_file):
-                root.quit()
-                return
-
-        Gui(root, input_file).pack(expand=True, fill=tk.BOTH)
-        root.mainloop()
-
-        args = []
+    root = tk.Tk()
+    root.title("Pivotter {:s}".format(version))
+    Gui(root, input_file).pack(expand=True, fill=tk.BOTH)
+    root.mainloop()
 
 if __name__ == "__main__":
     debug_file = "debug.csv"
