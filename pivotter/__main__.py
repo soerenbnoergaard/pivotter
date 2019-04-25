@@ -186,6 +186,10 @@ class Pivot(object):
     def update_figure(self):
         M, N = len(self.rows), len(self.cols)
 
+        if M == 0 or N == 0:
+            # Not data parsed yet
+            return False
+
         self.fig.clear()
 
         xy = dict.fromkeys(self.rows)
@@ -215,9 +219,12 @@ class Pivot(object):
                 ax.set_ylabel(self.y)
                 ax.set_ylim(*self.ylim)
                 ax.grid(True)
-        ax.legend(title=self.hue)
+
+        if ax is not None:
+            ax.legend(title=self.hue)
 
         self.xy = xy
+        return True
 
 class Gui(tk.Frame):
     def __init__(self, parent, filename=None):
@@ -357,6 +364,9 @@ class Gui(tk.Frame):
         self.thread_stop_event.clear()
         self.thread.start()
 
+        time.sleep(0.1)
+        self.on_update()
+
     def on_stop(self):
         self.thread_stop_event.set()
         while self.thread.is_alive():
@@ -370,9 +380,11 @@ class Gui(tk.Frame):
         ymax = None if ymax == "" else float(ymax)
 
         self.pivot.ylim = [ymin, ymax]
-        self.pivot.update_figure()
-        self.pivot.fig.tight_layout()
-        self.pivot.fig.canvas.draw_idle()
+        
+        success = self.pivot.update_figure()
+        if success:
+            self.pivot.fig.tight_layout()
+            self.pivot.fig.canvas.draw_idle()
 
     def on_save(self):
         f = filedialog.asksaveasfilename(title="Save figure", filetypes=[("PNG", ".png"), ("SVG", ".svg"), ("PDF", ".pdf")], defaultextension=".png")
