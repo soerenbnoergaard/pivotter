@@ -106,6 +106,8 @@ class Pivot(object):
 
         self.ylim = [None, None]
 
+        self.fontsize = 8
+
     def __repr__(self):
         s = ""
         s += "x   = {}\n".format(self.x)
@@ -215,13 +217,24 @@ class Pivot(object):
 
                     xy[row][col][hue], = ax.plot(xvalues, yvalues, label=hue)
 
+                title = []
+                if len(self.rows) > 1:
+                    title.append("{:s} = {:s}".format(self.row, str(row)))
+                if len(self.cols) > 1:
+                    title.append("{:s} = {:s}".format(self.col, str(col)))
+
                 ax.set_xlabel(self.x)
                 ax.set_ylabel(self.y)
                 ax.set_ylim(*self.ylim)
+                ax.set_title(" | ".join(title))
                 ax.grid(True)
 
+                for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
+                             ax.get_xticklabels() + ax.get_yticklabels()):
+                    item.set_fontsize(self.fontsize)
+
         if ax is not None:
-            ax.legend(title=self.hue)
+            ax.legend(title=self.hue, fontsize=self.fontsize, title_fontsize=self.fontsize)
 
         self.xy = xy
         return True
