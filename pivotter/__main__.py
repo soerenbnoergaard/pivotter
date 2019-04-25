@@ -104,6 +104,8 @@ class Pivot(object):
         else:
             self.fig = plt.figure()
 
+        self.ylim = [None, None]
+
     def __repr__(self):
         s = ""
         s += "x   = {}\n".format(self.x)
@@ -211,6 +213,7 @@ class Pivot(object):
 
                 ax.set_xlabel(self.x)
                 ax.set_ylabel(self.y)
+                ax.set_ylim(*self.ylim)
                 ax.grid(True)
         ax.legend(title=self.hue)
 
@@ -235,6 +238,7 @@ class Gui(tk.Frame):
 
         self.fr_open = tk.Frame(self)
         self.fr_inputs = tk.Frame(self)
+        self.fr_fixed_inputs = tk.Frame(self)
         self.fr_buttons = tk.Frame(self)
         self.fr_plot = tk.Frame(self)
 
@@ -246,6 +250,8 @@ class Gui(tk.Frame):
             ["row", tk.StringVar()],
         ])
         self.var_filename = tk.StringVar()
+        self.var_ymin = tk.StringVar()
+        self.var_ymax = tk.StringVar()
 
         # OPEN
         tk.Label(self.fr_open, text="File:").pack(side=tk.LEFT)
@@ -257,10 +263,16 @@ class Gui(tk.Frame):
         if self.filename is not None:
             self.on_open(ask = False)
 
+        # FIXED INPUTS
+        tk.Label(self.fr_fixed_inputs, text="ymin").grid(row=0, column=0)
+        tk.Entry(self.fr_fixed_inputs, textvariable=self.var_ymin).grid(row=0, column=1)
+        tk.Label(self.fr_fixed_inputs, text="ymax").grid(row=1, column=0)
+        tk.Entry(self.fr_fixed_inputs, textvariable=self.var_ymax).grid(row=1, column=1)
+
         # BUTTONS
         tk.Button(self.fr_buttons, text="Start", command=self.on_start).pack(side=tk.LEFT)
         tk.Button(self.fr_buttons, text="Stop", command=self.on_stop).pack(side=tk.LEFT)
-        tk.Button(self.fr_buttons, text="Tight layout", command=self.on_fix_layout).pack(side=tk.LEFT)
+        tk.Button(self.fr_buttons, text="Update", command=self.on_update).pack(side=tk.LEFT)
         tk.Button(self.fr_buttons, text="Save", command=self.on_save).pack(side=tk.LEFT)
 
         # PLOT CANVAS
@@ -269,11 +281,16 @@ class Gui(tk.Frame):
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=1)
 
-        # Pack frames
+        # PACK FRAMES
         self.fr_open.pack(fill=tk.X)
         self.fr_inputs.pack(fill=tk.X)
+        self.fr_fixed_inputs.pack(fill=tk.X)
         self.fr_buttons.pack(fill=tk.X)
         self.fr_plot.pack(fill=tk.BOTH, expand=True)
+
+        # KEYBINDINGS
+        self.parent.bind("<Return>", lambda x: self.on_update() if self.thread.is_alive() else self.on_start())
+        self.parent.bind("<Control-o>", lambda x: self.on_open())
 
     def on_close(self):
         self.on_stop()
@@ -316,8 +333,8 @@ class Gui(tk.Frame):
 
     def on_start(self):
         if self.thread.is_alive():
-            print("Thread already running")
-            return
+            print("Thread already running - restarting")
+            self.on_stop()
 
         x = self.var["x"].get()
         y = self.var["y"].get()
@@ -345,7 +362,15 @@ class Gui(tk.Frame):
         while self.thread.is_alive():
             time.sleep(0.1)
 
-    def on_fix_layout(self):
+    def on_update(self):
+        ymin = self.var_ymin.get()
+        ymin = None if ymin == "" else float(ymin)
+
+        ymax = self.var_ymax.get()
+        ymax = None if ymax == "" else float(ymax)
+
+        self.pivot.ylim = [ymin, ymax]
+        self.pivot.update_figure()
         self.pivot.fig.tight_layout()
         self.pivot.fig.canvas.draw_idle()
 
