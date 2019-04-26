@@ -388,8 +388,14 @@ class Gui(tk.Frame):
 
     def on_stop(self):
         self.thread_stop_event.set()
+
+        timeout = 2.0
+        t_start = time.time()
+
         while self.thread.is_alive():
             time.sleep(0.1)
+            if (time.time() - t_start) > timeout:
+                return
 
     def on_update(self):
         ymin = self.var_ymin.get()
