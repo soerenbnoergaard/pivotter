@@ -76,12 +76,13 @@ else:
         return open(filename, access)
 
 class Pivot(object):
-    def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None):
+    def __init__(self, x, y, hue=None, col=None, row=None, height=2.5, aspect=1.5, fig=None, marker=""):
         self.x = x
         self.y = y
         self.hue = hue
         self.col = col
         self.row = row
+        self.marker = marker
 
         self.height = height
         self.aspect = aspect
@@ -215,7 +216,7 @@ class Pivot(object):
                         xvalues = []
                         yvalues = []
 
-                    xy[row][col][hue], = ax.plot(xvalues, yvalues, label=hue)
+                    xy[row][col][hue], = ax.plot(xvalues, yvalues, marker=self.marker, label=hue)
 
                 title = []
                 if len(self.rows) > 1:
@@ -273,6 +274,7 @@ class Gui(tk.Frame):
         self.var_filename = tk.StringVar()
         self.var_ymin = tk.StringVar()
         self.var_ymax = tk.StringVar()
+        self.var_marker = tk.StringVar()
 
         # OPEN
         tk.Label(self.fr_open, text="File:").pack(side=tk.LEFT)
@@ -289,6 +291,8 @@ class Gui(tk.Frame):
         tk.Entry(self.fr_fixed_inputs, textvariable=self.var_ymin).grid(row=0, column=1)
         tk.Label(self.fr_fixed_inputs, text="ymax").grid(row=1, column=0)
         tk.Entry(self.fr_fixed_inputs, textvariable=self.var_ymax).grid(row=1, column=1)
+        tk.Label(self.fr_fixed_inputs, text="marker").grid(row=2, column=0)
+        tk.OptionMenu(self.fr_fixed_inputs, self.var_marker, "", ".", "o", "x", "^", "v").grid(row=2, column=1)
 
         # BUTTONS
         tk.Button(self.fr_buttons, text="Start", command=self.on_start).pack(side=tk.LEFT)
@@ -370,6 +374,7 @@ class Gui(tk.Frame):
             row = None if row is "" else row,
             hue = None if hue is "" else hue,
             fig = self.fig,
+            marker = self.var_marker.get(),
         )
 
         self.pivot.parse_header(self.header)
