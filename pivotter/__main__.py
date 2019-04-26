@@ -248,6 +248,7 @@ class Gui(tk.Frame):
         self.header = []
         self.delimiter = ","
         self.quotechar = '"'
+        self.update_period_s = 1
 
         # Common handles
         self.pivot = None
@@ -410,6 +411,7 @@ class Gui(tk.Frame):
     def loop(self):
         p = self.pivot
 
+        previous_update_time = 0
         n = 0
         with open_file_nonblocking(self.filename, "r") as f:
             reader = csv.reader(f, delimiter=self.delimiter, quotechar=self.quotechar)
@@ -423,6 +425,12 @@ class Gui(tk.Frame):
                     n += 1
 
                 time.sleep(0.2)
+
+                # Periodically update figure
+                now = time.time()
+                if (now - previous_update_time) > self.update_period_s:
+                    previous_update_time = now
+                    self.on_update()
 
 def main(args):
     version_file = os.path.join(os.path.dirname(__file__), "version.py")
