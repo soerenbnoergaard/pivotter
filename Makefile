@@ -1,8 +1,12 @@
+include Makefile.FLTK
+
 .PHONY: all clean
 
 TARGET = pivotter
-SOURCES = pivot.cpp
 INCLUDES = -I.
 
-all: 
-	@g++ $(INCLUDES) $(SOURCES) -o $(TARGET)
+all: gui.o
+	@g++ -std=c++11 $(INCLUDES) -c pivotter.cxx
+	@g++ -std=c++11 pivotter.o gui.o -o $(TARGET)
+
+

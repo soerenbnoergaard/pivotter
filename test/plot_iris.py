@@ -7,8 +7,8 @@ def main():
     df = pd.read_csv("../data/iris.csv")
     sns.relplot(
         data = df,
-        x = "petal_length",
-        y = "sepal_length",
+        x = "sepal_length",
+        y = "petal_length",
         hue = "species",
     )
     plt.show()
