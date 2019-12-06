@@ -2,18 +2,9 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <vector>
-#include <unordered_map>
+#include "pivot.h"
 
 using namespace std;
-
-typedef struct {
-    vector<double> x;
-    vector<double> y;
-} xy_t;
-
-//                    hue
-typedef unordered_map<string, xy_t> data_t;
 
 static struct {
     string filename;

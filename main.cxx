@@ -2,12 +2,8 @@
 #include <FL/Fl_Window.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Chart.H>
-#include <FL/fl_draw.H>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <math.h>
-#include "pivotter.h"
+#include "pivot.h"
+using namespace std;
 
 int main(void)
 {
@@ -18,9 +14,12 @@ int main(void)
     chart0->autosize(true);
     chart0->color(FL_WHITE);
 
-    /* for (int n = 0; n < y.size(); n++) { */
-    /*     chart0->add(y[n], NULL, FL_BLUE); */
-    /* } */
+    data_t xy = get_data();
+    xy_t z = xy["setosa"];
+
+    for (int n = 0; n < z.x.size(); n++) {
+        chart0->add(z.y[n], NULL, FL_BLUE);
+    }
 
     win->resizable(win);
     win->show();
