@@ -7,9 +7,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-#include "gui.h"
+#include "pivotter.h"
 
-int plot(vector<double> x, vector<double> y)
+int main(void)
 {
     Fl_Window *win = new Fl_Window(1000, 480);
     Fl_Chart *chart0 = new Fl_Chart(20, 20, win->w()-40, win->h()-40, NULL);
@@ -18,9 +18,9 @@ int plot(vector<double> x, vector<double> y)
     chart0->autosize(true);
     chart0->color(FL_WHITE);
 
-    for (int n = 0; n < y.size(); n++) {
-        chart0->add(y[n], NULL, FL_BLUE);
-    }
+    /* for (int n = 0; n < y.size(); n++) { */
+    /*     chart0->add(y[n], NULL, FL_BLUE); */
+    /* } */
 
     win->resizable(win);
     win->show();

@@ -4,7 +4,6 @@
 #include <sstream>
 #include <vector>
 #include <unordered_map>
-#include "gui.h"
 
 using namespace std;
 
@@ -52,7 +51,7 @@ int print_data(data_t xy)
     return 0; 
 }
 
-int main(int argc, const char *argv[]) 
+data_t get_data(void) 
 {
     test_init();
 
@@ -103,8 +102,8 @@ int main(int argc, const char *argv[])
         xy[hue].y.push_back(y);
     }
 
-    print_data(xy);
-    plot(xy["setosa"].x, xy["setosa"].y);
+    /* print_data(xy); */
+    /* plot(xy["setosa"].x, xy["setosa"].y); */
 
-    return 0;
+    return xy;
 }

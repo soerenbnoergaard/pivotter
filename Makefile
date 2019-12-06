@@ -1,12 +1,12 @@
 include Makefile.FLTK
 
-.PHONY: all clean
+.PHONY: all clean cleanall
 
-TARGET = pivotter
-INCLUDES = -I.
+all: main
 
-all: gui.o
-	@g++ -std=c++11 $(INCLUDES) -c pivotter.cxx
-	@g++ -std=c++11 pivotter.o gui.o -o $(TARGET)
+clean:
+	@rm -rf *.o
 
+cleanall: clean
+	rm main
 
