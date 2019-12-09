@@ -12,7 +12,7 @@ Download FLTK
 
 For Windows (msys2, 64 bit):
 
-    ./autogen.sh --mingw64
+    ./autogen.sh --build=mingw64
     make
 
 For Linux:
