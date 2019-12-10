@@ -5,6 +5,8 @@
 #include "pivot.h"
 using namespace std;
 
+
+
 int main(void)
 {
     Fl_Window *win = new Fl_Window(1000, 480);
