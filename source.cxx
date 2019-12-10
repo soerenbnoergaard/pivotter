@@ -26,7 +26,6 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
     string word;
 
     *ok = false;
-
     filehandle.clear();
 
     if (!getline(filehandle, line)) {

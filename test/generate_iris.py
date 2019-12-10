@@ -12,4 +12,4 @@ with open(datapath("iris.csv")) as fi:
     for line in fi:
         with open(datapath("output.csv"), "a") as fo:
             fo.write(line)
-        time.sleep(0.5)
+        time.sleep(0.1)

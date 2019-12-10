@@ -16,7 +16,7 @@
 
 using namespace std;
 
-#define FRAME_RATE_Hz 24
+#define FRAME_RATE_Hz 100
 #define MAX_NUM_HUES 10
 
 GLubyte color_lut[MAX_NUM_HUES][3] = {
@@ -48,7 +48,7 @@ void get_sample(double *x, double *y)
 class Pivotter : public Fl_Gl_Window
 {
 private:
-    Source source;
+    Source *source;
     data_t data;
     int num_samples = 0;
     double xmin;
@@ -106,8 +106,9 @@ private:
         Pivotter *h = (Pivotter *)handle;
         double x, y;
         string hue;
+
         bool ok;
-        h->source.get_sample(&x, &y, &hue, &ok);
+        h->source->get_sample(&x, &y, &hue, &ok);
         if (ok) {
             h->add(x, y, hue);
             h->redraw();
@@ -116,8 +117,9 @@ private:
     }
 public:
     // Constructor
-    Pivotter(int X, int Y, int W, int H, const char*L=0) : Fl_Gl_Window(X, Y, W, H, L), source("data/output.csv")
+    Pivotter(Source *this_source, int X, int Y, int W, int H, const char*L=0) : Fl_Gl_Window(X, Y, W, H, L)
     {
+        source = this_source;
         reset();
         Fl::add_timeout(1.0/FRAME_RATE_Hz, timer_cb, (void *)this);
         end();
@@ -167,7 +169,9 @@ public:
 int main()
 {
     Fl_Window win(500, 300, "Pivotter");
-    Pivotter pivotter(10, 10, win.w()-20, win.h()-20);
+    Source source("data/output.csv");
+    Pivotter pivotter(&source, 10, 10, win.w()-20, win.h()-20);
+
     win.end();
     win.resizable(pivotter);
     win.show();
