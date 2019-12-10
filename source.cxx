@@ -33,7 +33,6 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
     }
 
     if (rowcnt == headerrow) {
-        // TODO: Handle header row for legend
         rowcnt += 1;
         return;
     }
@@ -42,7 +41,6 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
         return;
     }
 
-    // cout << line << endl;
     istringstream iss(line);
     int missingcnt = 3;
 
