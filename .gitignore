@@ -3,3 +3,5 @@ fltk-release-*
 
 pivotter
 examples/opengl
+
+data/output.csv

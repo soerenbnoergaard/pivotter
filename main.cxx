@@ -4,6 +4,7 @@
 #include <FL/Fl_Gl_Window.H>
 #include <FL/gl.h>
 
+#include <iostream>
 #include <vector>
 #include <unordered_map>
 
@@ -11,9 +12,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "source.h"
+
 using namespace std;
 
-#define FRAME_RATE_Hz 10
+#define FRAME_RATE_Hz 24
 #define MAX_NUM_HUES 10
 
 GLubyte color_lut[MAX_NUM_HUES][3] = {
@@ -42,8 +45,10 @@ void get_sample(double *x, double *y)
     *y = rand();
 }
 
-class Pivotter : public Fl_Gl_Window {
+class Pivotter : public Fl_Gl_Window
+{
 private:
+    Source source;
     data_t data;
     int num_samples = 0;
     double xmin;
@@ -70,8 +75,8 @@ private:
         }
 
         // Clear screen
-        glClearColor(1.0, 1.0, 1.0, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(1.0, 1.0, 1.0, 1.0);
 
         // Plot all lines
         int i = 0;
@@ -84,8 +89,10 @@ private:
 
             // Draw line
             glColor3ub(color_lut[i][0], color_lut[i][1], color_lut[i][2]);
-            glBegin(GL_LINE_STRIP);
-            for (int n = 0; n < num_samples; n++) {
+            // glBegin(GL_LINE_STRIP);
+            glPointSize(10.0);
+            glBegin(GL_POINTS);
+            for (int n = 0; n < data[hue].x.size(); n++) {
                 glVertex2f(xscale(data[hue].x[n]), yscale(data[hue].y[n]));
             }
             glEnd();
@@ -98,14 +105,18 @@ private:
     {
         Pivotter *h = (Pivotter *)handle;
         double x, y;
-        get_sample(&x, &y);
-        h->add(x, y, "tmp");
-        h->redraw();
+        string hue;
+        bool ok;
+        h->source.get_sample(&x, &y, &hue, &ok);
+        if (ok) {
+            h->add(x, y, hue);
+            h->redraw();
+        }
         Fl::repeat_timeout(1.0/FRAME_RATE_Hz, timer_cb, handle);
     }
 public:
     // Constructor
-    Pivotter(int X, int Y, int W, int H, const char*L=0) : Fl_Gl_Window(X, Y, W, H, L)
+    Pivotter(int X, int Y, int W, int H, const char*L=0) : Fl_Gl_Window(X, Y, W, H, L), source("data/output.csv")
     {
         reset();
         Fl::add_timeout(1.0/FRAME_RATE_Hz, timer_cb, (void *)this);

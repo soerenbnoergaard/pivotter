@@ -2,7 +2,7 @@ include Makefile.FLTK
 
 .PHONY: all clean cleanall
 
-OBJECTS = main.o pivot.o
+OBJECTS = main.o source.o
 TARGET = pivotter
 
 all: $(TARGET)
