@@ -16,7 +16,7 @@
 
 using namespace std;
 
-#define FRAME_RATE_Hz 100
+#define FRAME_RATE_Hz 24
 #define MAX_NUM_HUES 10
 
 GLubyte color_lut[MAX_NUM_HUES][3] = {
@@ -108,10 +108,15 @@ private:
         string hue;
 
         bool ok;
-        h->source->get_sample(&x, &y, &hue, &ok);
-        if (ok) {
-            h->add(x, y, hue);
-            h->redraw();
+        while (1) {
+            h->source->get_sample(&x, &y, &hue, &ok);
+            if (ok) {
+                h->add(x, y, hue);
+                h->redraw();
+            }
+            else {
+                break;
+            }
         }
         Fl::repeat_timeout(1.0/FRAME_RATE_Hz, timer_cb, handle);
     }
