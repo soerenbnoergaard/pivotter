@@ -100,11 +100,14 @@ GLfloat Pivotter::yscale(double y)
 
 void Pivotter::draw()
 {
-    if (!valid()) {
-        glLoadIdentity();
-        glViewport(0,0, w(), h());
-        glOrtho(-w(), w(), -h(), h(), -1, 1);
-    }
+    // if (!valid()) {
+    //     glLoadIdentity();
+    //     glViewport(0,0, w(), h());
+    //     glOrtho(-w(), w(), -h(), h(), -1, 1);
+    // }
+    glLoadIdentity();
+    glViewport(0,0, w(), h());
+    glOrtho(xmin, xmax, ymin, ymax, -1, 1);
 
     // Clear screen
     glClear(GL_COLOR_BUFFER_BIT);
@@ -126,7 +129,7 @@ void Pivotter::draw()
         glBegin(GL_LINE_STRIP);
 #endif
         for (int n = 0; n < s->x.size(); n++) {
-            glVertex2f(xscale(s->x[n]), yscale(s->y[n]));
+            glVertex2f(s->x[n], s->y[n]);
         }
         glEnd();
 
