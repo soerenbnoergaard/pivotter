@@ -45,19 +45,25 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
     int missingcnt = 3;
 
     // Split CSV line
-    for (int colcnt = 0; getline(iss, word, delimiter); colcnt++) {
-        if (xcol == colcnt) {
-            *x = stod(word);
-            missingcnt -= 1;
+    try {
+        for (int colcnt = 0; getline(iss, word, delimiter); colcnt++) {
+            if (xcol == colcnt) {
+                *x = stod(word);
+                missingcnt -= 1;
+            }
+            else if (ycol == colcnt) {
+                *y = stod(word);
+                missingcnt -= 1;
+            }
+            else if (huecol == colcnt) {
+                *hue = word;
+                missingcnt -= 1;
+            }
         }
-        else if (ycol == colcnt) {
-            *y = stod(word);
-            missingcnt -= 1;
-        }
-        else if (huecol == colcnt) {
-            *hue = word;
-            missingcnt -= 1;
-        }
+    }
+    catch (...) {
+        rowcnt += 1;
+        return;
     }
 
     if (missingcnt != 0) {

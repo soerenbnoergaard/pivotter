@@ -17,6 +17,10 @@
 
 using namespace std;
 
+// Compile options
+// #define USE_POINTS
+
+// Defines
 #define FRAME_RATE_Hz 24
 #define NUM_COLORS 10
 
@@ -97,14 +101,19 @@ void Pivotter::draw()
     int i = 0;
     for (auto it = data.cbegin(); it != data.cend(); it++) {
         string hue = it->first;
+        const xy_t *s = &it->second;
 
         // Draw line
-        glColor3ub(data[hue].color[0], data[hue].color[1], data[hue].color[2]);
-        // glBegin(GL_LINE_STRIP);
-        glPointSize(6.0);
+        glColor3ub(s->color[0], s->color[1], s->color[2]);
+#ifdef USE_POINTS
+        glPointSize(5.0);
         glBegin(GL_POINTS);
-        for (int n = 0; n < data[hue].x.size(); n++) {
-            glVertex2f(xscale(data[hue].x[n]), yscale(data[hue].y[n]));
+#else
+        glLineWidth(3.0);
+        glBegin(GL_LINE_STRIP);
+#endif
+        for (int n = 0; n < s->x.size(); n++) {
+            glVertex2f(xscale(s->x[n]), yscale(s->y[n]));
         }
         glEnd();
 
