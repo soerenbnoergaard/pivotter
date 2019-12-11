@@ -7,3 +7,6 @@ pivotter
 examples/opengl
 
 data/output.csv
+
+perf.data
+perf.data.old

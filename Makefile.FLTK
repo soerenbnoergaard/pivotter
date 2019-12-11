@@ -27,7 +27,7 @@ LINKFLTK_ALL = $(shell $(FLTKCONFIG) --use-images --use-gl --ldstaticflags)
 # HOW TO COMPILE
 .cxx.o:
 	@echo "*** Compile $<..."
-	$(CXX) -I.. $(CXXFLAGS) -c $< -o $@
+	$(CXX) -g3 -I.. $(CXXFLAGS) -c $< -o $@
 
 # HOW TO LINK
 .o$(EXEEXT):

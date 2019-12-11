@@ -12,10 +12,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "source.h"
 
 using namespace std;
+
+typedef struct {
+    int t;
+    int n;
+} clock_sample_t;
+
+// Debug data
+static struct {
+    clock_sample_t clk_redraw = {0, 0};
+    clock_sample_t clk_add = {0, 0};
+    clock_sample_t clk_getsample = {0, 0};
+} debug;
 
 // Compile options
 // #define USE_POINTS
@@ -126,13 +139,25 @@ void Pivotter::timer_cb(void *handle)
     Pivotter *h = (Pivotter *)handle;
     double x, y;
     string hue;
+    clock_t start;
 
     bool ok;
     while (1) {
+        start = clock();
         h->source->get_sample(&x, &y, &hue, &ok);
         if (ok) {
+            debug.clk_getsample.t += clock() - start;
+            debug.clk_getsample.n += 1;
+            
+            start = clock();
             h->add(x, y, hue);
+            debug.clk_add.t += clock() - start;
+            debug.clk_add.n += 1;
+
+            start = clock();
             h->redraw();
+            debug.clk_redraw.t += clock() - start;
+            debug.clk_redraw.n += 1;
         }
         else {
             break;
@@ -214,5 +239,9 @@ int main(int argc, const char *argv[])
     win.resizable(pivotter);
     win.show();
 
-    return(Fl::run());
+    auto ret = Fl::run();
+    cout << "Get sample: " << (1.0*debug.clk_getsample.t)/debug.clk_getsample.n << endl;
+    cout << "Add:        " << (1.0*debug.clk_add.t)/debug.clk_add.n << endl;
+    cout << "Redraw:     " << (1.0*debug.clk_redraw.t)/debug.clk_redraw.n << endl;
+    return ret;
 }
