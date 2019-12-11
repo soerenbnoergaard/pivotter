@@ -18,9 +18,9 @@
 using namespace std;
 
 #define FRAME_RATE_Hz 24
-#define MAX_NUM_HUES 10
+#define NUM_COLORS 10
 
-GLubyte color_lut[MAX_NUM_HUES][3] = {
+GLubyte color_lut[NUM_COLORS][3] = {
     { 0x1f, 0x77, 0xb4 },
     { 0xff, 0x7f, 0x0e },
     { 0x2c, 0xa0, 0x2c },
@@ -36,6 +36,7 @@ GLubyte color_lut[MAX_NUM_HUES][3] = {
 typedef struct {
     vector<double> x;
     vector<double> y;
+    GLubyte *color;
 } xy_t;
 
 typedef unordered_map<string, xy_t> data_t;
@@ -52,6 +53,7 @@ private:
     Source *source;
     data_t data;
     int num_samples = 0;
+    int colorcnt;
     double xmin;
     double xmax;
     double ymin;
@@ -94,14 +96,10 @@ void Pivotter::draw()
     // Plot all lines
     int i = 0;
     for (auto it = data.cbegin(); it != data.cend(); it++) {
-        if (MAX_NUM_HUES-1 < i) {
-            continue;
-        }
-
         string hue = it->first;
 
         // Draw line
-        glColor3ub(color_lut[i][0], color_lut[i][1], color_lut[i][2]);
+        glColor3ub(data[hue].color[0], data[hue].color[1], data[hue].color[2]);
         // glBegin(GL_LINE_STRIP);
         glPointSize(6.0);
         glBegin(GL_POINTS);
@@ -146,6 +144,7 @@ void Pivotter::reset(void)
 {
     data.clear();
     num_samples = 0;
+    colorcnt = 0;
     xmin = 0.0;
     xmax = 0.0;
     ymin = 0.0;
@@ -175,6 +174,10 @@ void Pivotter::add(double x, double y, string hue)
         }
     }
 
+    if (data.find(hue) == data.end()) {
+        data[hue].color = color_lut[colorcnt % NUM_COLORS];
+        colorcnt += 1;
+    }
     data[hue].x.push_back(x);
     data[hue].y.push_back(y);
     num_samples += 1;
