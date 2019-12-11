@@ -6,14 +6,14 @@
 
 using namespace std;
 
-Source::Source(string this_filename)
+Source::Source(string this_filename, int this_xcol, int this_ycol, int this_huecol)
 {
     filename = this_filename;
     skiprows = 1;
     headerrow = 1;
-    xcol = 0;
-    ycol = 2;
-    huecol = 4;
+    xcol = this_xcol;
+    ycol = this_ycol;
+    huecol = this_huecol;
     delimiter = ',';
 
     rowcnt = 0;

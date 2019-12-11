@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 #include <unordered_map>
 
 #include <stdio.h>
@@ -181,10 +182,20 @@ void Pivotter::add(double x, double y, string hue)
     draw();
 }
 
-int main()
+int main(int argc, const char *argv[]) 
 {
+    if (argc != 5) {
+        cout << "Usage:" << endl;
+        cout << "    pivotter XCOLUMN YCOLUMN HUECOLUMN FILENAME" << endl;
+        return 1;
+    }
+    int xcol = stoi(string(argv[1]));
+    int ycol = stoi(string(argv[2]));
+    int huecol = stoi(string(argv[3]));
+    string filename = string(argv[4]);
+
     Fl_Window win(500, 300, "Pivotter");
-    Source source("data/output.csv");
+    Source source(filename, xcol, ycol, huecol);
     Pivotter pivotter(&source, 10, 10, win.w()-20, win.h()-20);
 
     win.end();

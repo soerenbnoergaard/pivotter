@@ -19,7 +19,7 @@ private:
     int rowcnt;
 
 public:
-    Source(string this_filename);
+    Source(string this_filename, int this_xcol, int this_ycol, int this_huecol);
     void get_sample(double *x, double *y, string *hue, bool *ok);
 };
 

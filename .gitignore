@@ -1,6 +1,8 @@
-*.o
 fltk-release-*
 
+*.tar.gz
+*.o
+*.exe
 pivotter
 examples/opengl
 
