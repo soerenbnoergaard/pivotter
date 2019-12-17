@@ -31,7 +31,7 @@ static struct {
 } debug;
 
 // Compile options
-// #define USE_POINTS
+#define USE_POINTS
 
 // Defines
 #define FRAME_RATE_Hz 24
@@ -76,8 +76,6 @@ private:
     double ymin;
     double ymax;
 
-    GLfloat xscale(double x);
-    GLfloat yscale(double y);
     void draw();
     static void timer_cb(void *handle);
 
@@ -87,16 +85,6 @@ public:
     void reset(void);
     void add(double x, double y, string hue);
 };
-
-GLfloat Pivotter::xscale(double x)
-{
-    return -w() + (x-xmin)*(w()+w())/(xmax-xmin);
-}
-
-GLfloat Pivotter::yscale(double y)
-{
-    return -h() + (y-ymin)*(h()+h())/(ymax-ymin);
-}
 
 void Pivotter::draw()
 {
@@ -122,7 +110,7 @@ void Pivotter::draw()
         // Draw line
         glColor3ub(s->color[0], s->color[1], s->color[2]);
 #ifdef USE_POINTS
-        glPointSize(5.0);
+        glPointSize(4.0);
         glBegin(GL_POINTS);
 #else
         glLineWidth(3.0);
