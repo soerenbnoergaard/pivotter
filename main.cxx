@@ -3,6 +3,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Gl_Window.H>
 #include <FL/gl.h>
+#include <GL/glut.h>
 
 #include <iostream>
 #include <vector>
@@ -23,9 +24,21 @@ typedef struct {
     int n;
 } clock_sample_t;
 
+typedef enum {
+    ALIGN_V_TOP,
+    ALIGN_V_CENTER,
+    ALIGN_V_BOTTOM,
+    ALIGN_H_LEFT,
+    ALIGN_H_CENTER,
+    ALIGN_H_RIGHT
+} align_t;
+
 // Defines
 #define FRAME_RATE_Hz 24
 #define NUM_COLORS 10
+#define MAX_LABEL_SIZE 1024
+#define BORDER 20
+#define FONT GLUT_BITMAP_8_BY_13
 
 GLubyte color_lut[NUM_COLORS][3] = {
     { 0x1f, 0x77, 0xb4 },
@@ -62,7 +75,9 @@ private:
 
     bool style_scatter;
 
-    void draw();
+    void draw(void);
+    void draw_text(double x, double y, string s, align_t halign, align_t valign);
+    void draw_decorations(void);
     static void timer_cb(void *handle);
 
 public:
@@ -98,12 +113,15 @@ void Pivotter::draw()
 {
     // Refresh scaling
     glLoadIdentity();
-    glViewport(0,0, w(), h());
+    glViewport(BORDER, BORDER, w()-2*BORDER, h()-2*BORDER);
     glOrtho(xmin, xmax, ymin, ymax, -1, 1);
 
     // Clear screen
     glClearColor(1.0, 1.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // Add decorations
+    draw_decorations();
 
     // Plot all datapoints
     int i = 0;
@@ -129,6 +147,49 @@ void Pivotter::draw()
 
         i += 1;
     }
+}
+
+void Pivotter::draw_text(double x, double y, string s, align_t halign, align_t valign)
+{
+    // TODO: Align vertically and horizontally.
+    // [1] https://www.programming-techniques.com/2012/05/font-rendering-in-glut-using-bitmap-fonts-with-sample-example.html
+
+    glColor3ub(0x00, 0x00, 0x00);
+    // glColor3ub(0xff, 0x00, 0x00);
+    glRasterPos2f(x, y);
+    /* int w = glutBitmapLength(FONT, (const unsigned char *)s.c_str()); */
+    // glPushMatrix();
+    // glLoadIdentity();
+    for (unsigned int n = 0; n < s.length(); n++) {
+        glutBitmapCharacter(FONT, s[n]);
+    }
+    // glPopMatrix();
+}
+
+void Pivotter::draw_decorations(void)
+{
+    char s[MAX_LABEL_SIZE];
+
+    // Draw outline
+    glLineWidth(3.0);
+    glColor3ub(0x00, 0x00, 0x00);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(xmin, ymin);
+        glVertex2f(xmin, ymax);
+        glVertex2f(xmax, ymax);
+        glVertex2f(xmax, ymin);
+    glEnd();
+
+    // Draw ticks
+
+    // y = ax + b;
+    // b = y - ax;
+    // a = (y1-y0)/(x1-x0);
+    // a = (xmax-xmin)
+    // b = -a*xmin
+
+    snprintf(s, MAX_LABEL_SIZE, "x=(%.3g, %.3g) y=(%.3g, %.3g)", xmin, xmax, ymin, ymax);
+    draw_text(xmin, ymin, string(s), ALIGN_H_CENTER, ALIGN_V_BOTTOM);
 }
 
 void Pivotter::add(double x, double y, string hue)
