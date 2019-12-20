@@ -58,12 +58,6 @@ typedef struct {
 
 typedef unordered_map<string, xy_t> data_t;
 
-void get_sample(double *x, double *y)
-{
-    *x = rand();
-    *y = rand();
-}
-
 class Pivotter : public Fl_Gl_Window
 {
 private:
@@ -85,6 +79,25 @@ public:
     void reset(void);
     void add(double x, double y, string hue);
 };
+
+Pivotter::Pivotter(Source *this_source, int X, int Y, int W, int H, const char*L) : Fl_Gl_Window(X, Y, W, H, L)
+{
+    source = this_source;
+    reset();
+    Fl::add_timeout(1.0/FRAME_RATE_Hz, timer_cb, (void *)this);
+    end();
+}
+
+void Pivotter::reset(void)
+{
+    data.clear();
+    num_samples = 0;
+    colorcnt = 0;
+    xmin = 0.0;
+    xmax = 0.0;
+    ymin = 0.0;
+    ymax = 0.0;
+}
 
 void Pivotter::draw()
 {
@@ -125,57 +138,6 @@ void Pivotter::draw()
     }
 }
 
-void Pivotter::timer_cb(void *handle)
-{
-    Pivotter *h = (Pivotter *)handle;
-    double x, y;
-    string hue;
-    clock_t start;
-
-    bool ok;
-    while (1) {
-        start = clock();
-        h->source->get_sample(&x, &y, &hue, &ok);
-        if (ok) {
-            debug.clk_getsample.t += clock() - start;
-            debug.clk_getsample.n += 1;
-            
-            start = clock();
-            h->add(x, y, hue);
-            debug.clk_add.t += clock() - start;
-            debug.clk_add.n += 1;
-
-            start = clock();
-            h->redraw();
-            debug.clk_redraw.t += clock() - start;
-            debug.clk_redraw.n += 1;
-        }
-        else {
-            break;
-        }
-    }
-    Fl::repeat_timeout(1.0/FRAME_RATE_Hz, timer_cb, handle);
-}
-
-Pivotter::Pivotter(Source *this_source, int X, int Y, int W, int H, const char*L) : Fl_Gl_Window(X, Y, W, H, L)
-{
-    source = this_source;
-    reset();
-    Fl::add_timeout(1.0/FRAME_RATE_Hz, timer_cb, (void *)this);
-    end();
-}
-
-void Pivotter::reset(void)
-{
-    data.clear();
-    num_samples = 0;
-    colorcnt = 0;
-    xmin = 0.0;
-    xmax = 0.0;
-    ymin = 0.0;
-    ymax = 0.0;
-}
-
 void Pivotter::add(double x, double y, string hue)
 {
     if (num_samples == 0) {
@@ -210,17 +172,94 @@ void Pivotter::add(double x, double y, string hue)
     draw();
 }
 
-int main(int argc, const char *argv[]) 
+void Pivotter::timer_cb(void *handle)
 {
-    if (argc != 5) {
-        cout << "Usage:" << endl;
-        cout << "    pivotter XCOLUMN YCOLUMN HUECOLUMN FILENAME" << endl;
-        return 1;
+    Pivotter *h = (Pivotter *)handle;
+    double x = 0.0;
+    double y = 0.0;
+    string hue = "";
+    clock_t start;
+
+    bool ok;
+    while (1) {
+        start = clock();
+        h->source->get_sample(&x, &y, &hue, &ok);
+        if (ok) {
+            debug.clk_getsample.t += clock() - start;
+            debug.clk_getsample.n += 1;
+            
+            start = clock();
+            h->add(x, y, hue);
+            debug.clk_add.t += clock() - start;
+            debug.clk_add.n += 1;
+
+            start = clock();
+            h->redraw();
+            debug.clk_redraw.t += clock() - start;
+            debug.clk_redraw.n += 1;
+        }
+        else {
+            break;
+        }
     }
-    int xcol = stoi(string(argv[1]));
-    int ycol = stoi(string(argv[2]));
-    int huecol = stoi(string(argv[3]));
-    string filename = string(argv[4]);
+    Fl::repeat_timeout(1.0/FRAME_RATE_Hz, timer_cb, handle);
+}
+
+void print_help(void)
+{
+    cout << "Usage: " << endl
+        << "    pivotter [OPTIONS] FILENAME.csv" << endl << endl
+        << "Options:" << endl
+        << "    -x XCOLUMN" << endl
+        << "    -y YCOLUMN" << endl
+        << "    -u HUECOLUMN" << endl
+        << endl;
+}
+
+int main(int argc, char *argv[]) 
+{
+    int opt;
+
+    int xcol = -1;
+    int ycol = -1;
+    int huecol = -1;
+    string filename;
+
+    // Optional arguments
+    while ((opt = getopt(argc, argv, "x:y:u:")) != EOF) {
+        switch (opt) {
+        case 'x':
+            xcol = stoi(string(optarg));
+            break;
+
+        case 'y':
+            ycol = stoi(string(optarg));
+            break;
+
+        case 'u':
+            huecol = stoi(string(optarg));
+            break;
+
+        case '?':
+            // Fall through
+        default:
+            print_help();
+            return 2;
+        }
+    }
+
+    // Positional arguments
+    if (argv[optind] == NULL) {
+        print_help();
+        return 2;
+    }
+    filename = string(argv[optind]);
+
+    // Check the input arguments
+    if (ycol < 0) {
+        print_help();
+        return 2;
+    }
 
     Fl_Window win(500, 300, "Pivotter");
     Source source(filename, xcol, ycol, huecol);
@@ -231,8 +270,8 @@ int main(int argc, const char *argv[])
     win.show();
 
     auto ret = Fl::run();
-    cout << "Get sample: " << (1.0*debug.clk_getsample.t)/debug.clk_getsample.n << endl;
-    cout << "Add:        " << (1.0*debug.clk_add.t)/debug.clk_add.n << endl;
-    cout << "Redraw:     " << (1.0*debug.clk_redraw.t)/debug.clk_redraw.n << endl;
+    /* cout << "Get sample: " << (1.0*debug.clk_getsample.t)/debug.clk_getsample.n << endl; */
+    /* cout << "Add:        " << (1.0*debug.clk_add.t)/debug.clk_add.n << endl; */
+    /* cout << "Redraw:     " << (1.0*debug.clk_redraw.t)/debug.clk_redraw.n << endl; */
     return ret;
 }

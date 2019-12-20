@@ -42,7 +42,7 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
     }
 
     istringstream iss(line);
-    int missingcnt = 3;
+    int missingcnt = (xcol >= 0) + (ycol >= 0) + (huecol >= 0);
 
     // Split CSV line
     try {
@@ -73,6 +73,12 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
     }
 
     *ok = true;
+
+    // If no x-column is selected, use a running sample count as x-axis.
+    if (xcol < 0) {
+        *x = rowcnt - skiprows;
+    }
+
     rowcnt += 1;
     return;
 }
