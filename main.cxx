@@ -30,9 +30,6 @@ static struct {
     clock_sample_t clk_getsample = {0, 0};
 } debug;
 
-// Compile options
-#define USE_POINTS
-
 // Defines
 #define FRAME_RATE_Hz 24
 #define NUM_COLORS 10
@@ -70,6 +67,8 @@ private:
     double ymin;
     double ymax;
 
+    bool style_scatter;
+
     void draw();
     static void timer_cb(void *handle);
 
@@ -78,6 +77,8 @@ public:
     Pivotter(Source *this_source, int X, int Y, int W, int H, const char*L=0);
     void reset(void);
     void add(double x, double y, string hue);
+    void set_style_scatter(void);
+    void set_style_line(void);
 };
 
 Pivotter::Pivotter(Source *this_source, int X, int Y, int W, int H, const char*L) : Fl_Gl_Window(X, Y, W, H, L)
@@ -97,6 +98,7 @@ void Pivotter::reset(void)
     xmax = 0.0;
     ymin = 0.0;
     ymax = 0.0;
+    style_scatter = true;
 }
 
 void Pivotter::draw()
@@ -122,13 +124,15 @@ void Pivotter::draw()
 
         // Draw line
         glColor3ub(s->color[0], s->color[1], s->color[2]);
-#ifdef USE_POINTS
-        glPointSize(4.0);
-        glBegin(GL_POINTS);
-#else
-        glLineWidth(3.0);
-        glBegin(GL_LINE_STRIP);
-#endif
+        if (style_scatter) {
+            glPointSize(4.0);
+            glBegin(GL_POINTS);
+        }
+        else {
+            glLineWidth(3.0);
+            glBegin(GL_LINE_STRIP);
+        }
+
         for (int n = 0; n < s->x.size(); n++) {
             glVertex2f(s->x[n], s->y[n]);
         }
@@ -170,6 +174,16 @@ void Pivotter::add(double x, double y, string hue)
     num_samples += 1;
 
     draw();
+}
+
+void Pivotter::set_style_scatter(void)
+{
+    style_scatter = true;
+}
+
+void Pivotter::set_style_line(void)
+{
+    style_scatter = false;
 }
 
 void Pivotter::timer_cb(void *handle)
