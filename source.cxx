@@ -10,7 +10,7 @@ Source::Source(string this_filename, int this_xcol, int this_ycol, int this_huec
 {
     filename = this_filename;
     skiprows = 1;
-    headerrow = 1;
+    headerrow = 0;
     xcol = this_xcol;
     ycol = this_ycol;
     huecol = this_huecol;
@@ -33,6 +33,7 @@ void Source::get_sample(double *x, double *y, string *hue, bool *ok)
     }
 
     if (rowcnt == headerrow) {
+        cout << line << endl;
         rowcnt += 1;
         return;
     }

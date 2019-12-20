@@ -23,13 +23,6 @@ typedef struct {
     int n;
 } clock_sample_t;
 
-// Debug data
-static struct {
-    clock_sample_t clk_redraw = {0, 0};
-    clock_sample_t clk_add = {0, 0};
-    clock_sample_t clk_getsample = {0, 0};
-} debug;
-
 // Defines
 #define FRAME_RATE_Hz 24
 #define NUM_COLORS 10
@@ -103,20 +96,16 @@ void Pivotter::reset(void)
 
 void Pivotter::draw()
 {
-    // if (!valid()) {
-    //     glLoadIdentity();
-    //     glViewport(0,0, w(), h());
-    //     glOrtho(-w(), w(), -h(), h(), -1, 1);
-    // }
+    // Refresh scaling
     glLoadIdentity();
     glViewport(0,0, w(), h());
     glOrtho(xmin, xmax, ymin, ymax, -1, 1);
 
     // Clear screen
-    glClear(GL_COLOR_BUFFER_BIT);
     glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-    // Plot all lines
+    // Plot all datapoints
     int i = 0;
     for (auto it = data.cbegin(); it != data.cend(); it++) {
         string hue = it->first;
@@ -133,7 +122,7 @@ void Pivotter::draw()
             glBegin(GL_LINE_STRIP);
         }
 
-        for (int n = 0; n < s->x.size(); n++) {
+        for (unsigned int n = 0; n < s->x.size(); n++) {
             glVertex2f(s->x[n], s->y[n]);
         }
         glEnd();
@@ -192,25 +181,13 @@ void Pivotter::timer_cb(void *handle)
     double x = 0.0;
     double y = 0.0;
     string hue = "";
-    clock_t start;
 
     bool ok;
     while (1) {
-        start = clock();
         h->source->get_sample(&x, &y, &hue, &ok);
         if (ok) {
-            debug.clk_getsample.t += clock() - start;
-            debug.clk_getsample.n += 1;
-            
-            start = clock();
             h->add(x, y, hue);
-            debug.clk_add.t += clock() - start;
-            debug.clk_add.n += 1;
-
-            start = clock();
             h->redraw();
-            debug.clk_redraw.t += clock() - start;
-            debug.clk_redraw.n += 1;
         }
         else {
             break;
@@ -221,12 +198,14 @@ void Pivotter::timer_cb(void *handle)
 
 void print_help(void)
 {
-    cout << "Usage: " << endl
+    cout << "Usage:" << endl
         << "    pivotter [OPTIONS] FILENAME.csv" << endl << endl
         << "Options:" << endl
-        << "    -x XCOLUMN" << endl
-        << "    -y YCOLUMN" << endl
-        << "    -u HUECOLUMN" << endl
+        << "    -y YCOLUMN     Column to plot along y-axis" << endl
+        << "    -x XCOLUMN     Column to plot along x-axis" << endl
+        << "    -u HUECOLUMN   Column to determine the plot hue (color)" << endl
+        << "    -s             Plot as scatter plot instead of line plot" << endl
+        << "    -h             Print this message" << endl
         << endl;
 }
 
@@ -237,10 +216,11 @@ int main(int argc, char *argv[])
     int xcol = -1;
     int ycol = -1;
     int huecol = -1;
+    bool scatter = false;
     string filename;
 
     // Optional arguments
-    while ((opt = getopt(argc, argv, "x:y:u:")) != EOF) {
+    while ((opt = getopt(argc, argv, "x:y:u:sh")) != EOF) {
         switch (opt) {
         case 'x':
             xcol = stoi(string(optarg));
@@ -254,6 +234,12 @@ int main(int argc, char *argv[])
             huecol = stoi(string(optarg));
             break;
 
+        case 's':
+            scatter = true;
+            break;
+
+        case 'h':
+            // Fall through
         case '?':
             // Fall through
         default:
@@ -275,17 +261,23 @@ int main(int argc, char *argv[])
         return 2;
     }
 
+    // Initialize main objects
     Fl_Window win(500, 300, "Pivotter");
     Source source(filename, xcol, ycol, huecol);
     Pivotter pivotter(&source, 10, 10, win.w()-20, win.h()-20);
 
+    // Set up main objects
+    if (scatter) {
+        pivotter.set_style_scatter();
+    }
+    else {
+        pivotter.set_style_line();
+    }
     win.end();
     win.resizable(pivotter);
     win.show();
 
+    // Run the program
     auto ret = Fl::run();
-    /* cout << "Get sample: " << (1.0*debug.clk_getsample.t)/debug.clk_getsample.n << endl; */
-    /* cout << "Add:        " << (1.0*debug.clk_add.t)/debug.clk_add.n << endl; */
-    /* cout << "Redraw:     " << (1.0*debug.clk_redraw.t)/debug.clk_redraw.n << endl; */
     return ret;
 }
