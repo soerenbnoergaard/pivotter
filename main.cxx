@@ -204,6 +204,8 @@ void print_help(void)
         << "    -y YCOLUMN     Column to plot along y-axis" << endl
         << "    -x XCOLUMN     Column to plot along x-axis" << endl
         << "    -u HUECOLUMN   Column to determine the plot hue (color)" << endl
+        << "    -l SKIPROWS    Number of lines to skip before the data [1]" << endl
+        << "    -n HEADERROW   Row where the header text is found [0]" << endl
         << "    -s             Plot as scatter plot instead of line plot" << endl
         << "    -h             Print this message" << endl
         << endl;
@@ -217,10 +219,12 @@ int main(int argc, char *argv[])
     int ycol = -1;
     int huecol = -1;
     bool scatter = false;
+    int skiprows = 1;
+    int headerrow = 0;
     string filename;
 
     // Optional arguments
-    while ((opt = getopt(argc, argv, "x:y:u:sh")) != EOF) {
+    while ((opt = getopt(argc, argv, "x:y:u:l:n:sh")) != EOF) {
         switch (opt) {
         case 'x':
             xcol = stoi(string(optarg));
@@ -232,6 +236,14 @@ int main(int argc, char *argv[])
 
         case 'u':
             huecol = stoi(string(optarg));
+            break;
+
+        case 'l':
+            skiprows = stoi(string(optarg));
+            break;
+
+        case 'n':
+            headerrow = stoi(string(optarg));
             break;
 
         case 's':
@@ -255,18 +267,22 @@ int main(int argc, char *argv[])
     }
     filename = string(argv[optind]);
 
-    // Check the input arguments
+    // Initialize file source
+    Source source(filename, xcol, ycol, huecol, skiprows, headerrow);
+
+    // If no y-parameter is specified, print the header info to help the user
+    // specify arguments.
     if (ycol < 0) {
         print_help();
+        source.print_header();
         return 2;
     }
 
-    // Initialize main objects
+    // Initialize GUI objects
     Fl_Window win(500, 300, "Pivotter");
-    Source source(filename, xcol, ycol, huecol);
     Pivotter pivotter(&source, 10, 10, win.w()-20, win.h()-20);
 
-    // Set up main objects
+    // Set up GUI objects
     if (scatter) {
         pivotter.set_style_scatter();
     }
