@@ -40,11 +40,16 @@ typedef enum {
 #define FRAME_RATE_Hz 24
 #define NUM_COLORS 10
 #define MAX_LABEL_SIZE 1024
-#define BORDER 50
+
+// #define BORDER 50
+#define BORDER_LEFT 50
+#define BORDER_BOTTOM 50
+#define BORDER_RIGHT 20
+#define BORDER_TOP 20
 
 #define FONT GLUT_BITMAP_HELVETICA_10
 
-#define DEBUG_DISABLE_TIMER
+// #define DEBUG_DISABLE_TIMER
 
 GLubyte color_lut[NUM_COLORS][3] = {
     { 0x1f, 0x77, 0xb4 },
@@ -82,9 +87,9 @@ private:
     bool style_scatter;
 
     void draw(void);
-    void draw_old(void);
     void draw_text_at_pixels(double x, double y, string s, hanchor_t halign, vanchor_t valign);
     void draw_decorations(void);
+    void draw_graphs(void);
 
     void set_domain_pixels(void);
     void set_domain_device(void);
@@ -124,20 +129,15 @@ void Pivotter::reset(void)
 void Pivotter::set_domain_pixels(void)
 {
     glLoadIdentity();
-    // glViewport(BORDER, BORDER, w()-2*BORDER, h()-2*BORDER);
     glViewport(0, 0, w(), h());
     glOrtho(0, w(), 0, h(), -1, 1);
 }
 
 void Pivotter::set_domain_device(void)
 {
-    GLdouble _xmin = -9.0;
-    GLdouble _xmax = 11.0;
-    GLdouble _ymin = -11.0;
-    GLdouble _ymax = 9.0;
     glLoadIdentity();
-    glViewport(BORDER, BORDER, w()-2*BORDER, h()-2*BORDER);
-    glOrtho(_xmin, _xmax, _ymin, _ymax, -1, 1);
+    glViewport(BORDER_LEFT, BORDER_BOTTOM, w()-BORDER_LEFT-BORDER_RIGHT, h()-BORDER_TOP-BORDER_BOTTOM);
+    glOrtho(xmin, xmax, ymin, ymax, -1, 1);
 }
 
 void Pivotter::draw()
@@ -147,65 +147,93 @@ void Pivotter::draw()
     glClear(GL_COLOR_BUFFER_BIT);
 
     draw_decorations();
-
-    // Draw a graph
-    glPushMatrix();
-        set_domain_device();
-
-        glLineWidth(3.0);
-        glColor3ub(0xff, 0x00, 0x00);
-        glBegin(GL_LINE_STRIP);
-            glVertex2f(-9.0, -3.0);
-            glVertex2f(-5.0, 0.0);
-            glVertex2f(-4.0, 1.0);
-            glVertex2f(-3.0, -1.0);
-            glVertex2f(3.0, -5.0);
-            glVertex2f(4.0, -9.0);
-            glVertex2f(9.0, 6.0);
-        glEnd();
-    glPopMatrix();
+    draw_graphs();
 
     return;
 }
 
-void Pivotter::draw_old()
+void Pivotter::draw_graphs(void)
 {
-    // Refresh scaling
-    glLoadIdentity();
-    glViewport(BORDER, BORDER, w()-2*BORDER, h()-2*BORDER);
-    glOrtho(xmin, xmax, ymin, ymax, -1, 1);
+    glPushMatrix();
+        set_domain_device();
 
-    // Clear screen
-    glClearColor(1.0, 1.0, 1.0, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+        // Plot all datapoints
+        int i = 0;
+        for (auto it = data.cbegin(); it != data.cend(); it++) {
+            string hue = it->first;
+            const xy_t *s = &it->second;
 
-    // Add decorations
-    draw_decorations();
+            // Draw line
+            glColor3ub(s->color[0], s->color[1], s->color[2]);
+            if (style_scatter) {
+                glPointSize(4.0);
+                glBegin(GL_POINTS);
+            }
+            else {
+                glLineWidth(3.0);
+                glBegin(GL_LINE_STRIP);
+            }
 
-    // Plot all datapoints
-    int i = 0;
-    for (auto it = data.cbegin(); it != data.cend(); it++) {
-        string hue = it->first;
-        const xy_t *s = &it->second;
+            for (unsigned int n = 0; n < s->x.size(); n++) {
+                glVertex2f(s->x[n], s->y[n]);
+            }
+            glEnd();
 
-        // Draw line
-        glColor3ub(s->color[0], s->color[1], s->color[2]);
-        if (style_scatter) {
-            glPointSize(4.0);
-            glBegin(GL_POINTS);
+            i += 1;
         }
-        else {
-            glLineWidth(3.0);
-            glBegin(GL_LINE_STRIP);
-        }
 
-        for (unsigned int n = 0; n < s->x.size(); n++) {
-            glVertex2f(s->x[n], s->y[n]);
-        }
+    glPopMatrix();
+}
+
+void Pivotter::draw_decorations(void)
+{
+    // Draw box axes
+    glPushMatrix();
+        set_domain_pixels();
+
+        double bottom = BORDER_BOTTOM;
+        double top = h()-BORDER_TOP;
+        double left = BORDER_LEFT;
+        double right = w()-BORDER_RIGHT;
+
+        glLineWidth(1.0);
+        glColor3ub(0x00, 0x00, 0x00);
+        glBegin(GL_LINE_LOOP);
+            glVertex2f(left, bottom);
+            glVertex2f(left, top);
+            glVertex2f(right, top);
+            glVertex2f(right, bottom);
         glEnd();
+        glBegin(GL_LINE_LOOP);
+            glVertex2f((left+right)/2.0, bottom);
+            glVertex2f((left+right)/2.0, top);
+        glEnd();
+        glBegin(GL_LINE_LOOP);
+            glVertex2f(left, (bottom+top)/2.0);
+            glVertex2f(right, (bottom+top)/2.0);
+        glEnd();
+    glPopMatrix();
 
-        i += 1;
-    }
+    // Draw text labels
+    const char *fmt = "%.3g";
+    char s[MAX_LABEL_SIZE];
+
+    sprintf(s, fmt, ymin);
+    draw_text_at_pixels(BORDER_LEFT, BORDER_BOTTOM, string(s), HANCHOR_RIGHT, VANCHOR_BOTTOM);
+    sprintf(s, fmt, (ymin+ymax)/2.0);
+    draw_text_at_pixels(BORDER_LEFT, h()/2.0 - (BORDER_TOP-BORDER_BOTTOM)/2, string(s), HANCHOR_RIGHT, VANCHOR_CENTER);
+    sprintf(s, fmt, ymax);
+    draw_text_at_pixels(BORDER_LEFT, h()-BORDER_TOP, string(s), HANCHOR_RIGHT, VANCHOR_TOP);
+
+    sprintf(s, fmt, xmin);
+    draw_text_at_pixels(BORDER_LEFT, BORDER_BOTTOM, string(s), HANCHOR_LEFT, VANCHOR_TOP);
+    sprintf(s, fmt, (xmin+xmax)/2.0);
+    draw_text_at_pixels(w()/2.0 - (BORDER_RIGHT-BORDER_LEFT)/2, BORDER_BOTTOM, string(s), HANCHOR_CENTER, VANCHOR_TOP);
+    sprintf(s, fmt, xmax);
+    draw_text_at_pixels(w()-BORDER_RIGHT, BORDER_BOTTOM, string(s), HANCHOR_RIGHT, VANCHOR_TOP);
+
+    return;
+
 }
 
 void Pivotter::draw_text_at_pixels(double x, double y, string s, hanchor_t halign, vanchor_t valign)
@@ -240,10 +268,12 @@ void Pivotter::draw_text_at_pixels(double x, double y, string s, hanchor_t halig
         break;
     }
 
+    x_offset *= 2.0;
+
     glPushMatrix();
         set_domain_pixels();
 
-        glColor3ub(0x00, 0x00, 0xff);
+        glColor3ub(0x00, 0x00, 0x00);
         glRasterPos2f(x-x_offset, y-y_offset);
         for (unsigned int n = 0; n < s.length(); n++) {
             glutBitmapCharacter(FONT, s[n]);
@@ -251,47 +281,6 @@ void Pivotter::draw_text_at_pixels(double x, double y, string s, hanchor_t halig
     glPopMatrix();
 }
 
-void Pivotter::draw_decorations(void)
-{
-    // Draw box axes
-    glPushMatrix();
-        set_domain_pixels();
-
-        double bottom = BORDER;
-        double top = h()-BORDER;
-        double left = BORDER;
-        double right = w()-BORDER;
-
-        glLineWidth(1.0);
-        glColor3ub(0x00, 0x00, 0x00);
-        glBegin(GL_LINE_LOOP);
-            glVertex2f(left, bottom);
-            glVertex2f(left, top);
-            glVertex2f(right, top);
-            glVertex2f(right, bottom);
-        glEnd();
-        glBegin(GL_LINE_LOOP);
-            glVertex2f((left+right)/2.0, bottom);
-            glVertex2f((left+right)/2.0, top);
-        glEnd();
-        glBegin(GL_LINE_LOOP);
-            glVertex2f(left, (bottom+top)/2.0);
-            glVertex2f(right, (bottom+top)/2.0);
-        glEnd();
-    glPopMatrix();
-
-    // Draw text labels
-    draw_text_at_pixels(BORDER, BORDER, "YMIN", HANCHOR_RIGHT, VANCHOR_BOTTOM);
-    draw_text_at_pixels(BORDER, h()/2.0, "YMID", HANCHOR_RIGHT, VANCHOR_CENTER);
-    draw_text_at_pixels(BORDER, h()-BORDER, "YMAX", HANCHOR_RIGHT, VANCHOR_TOP);
-
-    draw_text_at_pixels(BORDER, BORDER, "XMIN", HANCHOR_LEFT, VANCHOR_TOP);
-    draw_text_at_pixels(w()/2.0, BORDER, "XMID", HANCHOR_CENTER, VANCHOR_TOP);
-    draw_text_at_pixels(w()-BORDER, BORDER, "XMAX", HANCHOR_RIGHT, VANCHOR_TOP);
-
-    return;
-
-}
 
 void Pivotter::add(double x, double y, string hue)
 {

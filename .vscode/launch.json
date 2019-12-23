@@ -5,13 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug",
+            "name": "Iris",
             "type": "gdb",
             "request": "launch",
             "target": "./pivotter",
             "arguments": "-x0 -y2 -u4 -s data/iris.csv",
             "cwd": "${workspaceRoot}",
             "valuesFormatting": "parseText"
-        }
+        },
+        {
+            "name": "Iris (output.csv)",
+            "type": "gdb",
+            "request": "launch",
+            "target": "./pivotter",
+            "arguments": "-x0 -y2 -u4 -s data/output.csv",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        },
     ]
 }
