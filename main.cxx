@@ -25,20 +25,26 @@ typedef struct {
 } clock_sample_t;
 
 typedef enum {
-    ALIGN_V_TOP,
-    ALIGN_V_CENTER,
-    ALIGN_V_BOTTOM,
-    ALIGN_H_LEFT,
-    ALIGN_H_CENTER,
-    ALIGN_H_RIGHT
-} align_t;
+    VANCHOR_TOP,
+    VANCHOR_CENTER,
+    VANCHOR_BOTTOM,
+} vanchor_t;
+
+typedef enum {
+    HANCHOR_LEFT,
+    HANCHOR_CENTER,
+    HANCHOR_RIGHT
+} hanchor_t;
 
 // Defines
 #define FRAME_RATE_Hz 24
 #define NUM_COLORS 10
 #define MAX_LABEL_SIZE 1024
-#define BORDER 20
-#define FONT GLUT_BITMAP_8_BY_13
+#define BORDER 50
+
+#define FONT GLUT_BITMAP_HELVETICA_10
+
+#define DEBUG_DISABLE_TIMER
 
 GLubyte color_lut[NUM_COLORS][3] = {
     { 0x1f, 0x77, 0xb4 },
@@ -76,8 +82,12 @@ private:
     bool style_scatter;
 
     void draw(void);
-    void draw_text(double x, double y, string s, align_t halign, align_t valign);
+    void draw_old(void);
+    void draw_text_at_pixels(double x, double y, string s, hanchor_t halign, vanchor_t valign);
     void draw_decorations(void);
+
+    void set_domain_pixels(void);
+    void set_domain_device(void);
     static void timer_cb(void *handle);
 
 public:
@@ -93,7 +103,9 @@ Pivotter::Pivotter(Source *this_source, int X, int Y, int W, int H, const char*L
 {
     source = this_source;
     reset();
+#ifndef DEBUG_DISABLE_TIMER
     Fl::add_timeout(1.0/FRAME_RATE_Hz, timer_cb, (void *)this);
+#endif
     end();
 }
 
@@ -109,7 +121,54 @@ void Pivotter::reset(void)
     style_scatter = true;
 }
 
+void Pivotter::set_domain_pixels(void)
+{
+    glLoadIdentity();
+    // glViewport(BORDER, BORDER, w()-2*BORDER, h()-2*BORDER);
+    glViewport(0, 0, w(), h());
+    glOrtho(0, w(), 0, h(), -1, 1);
+}
+
+void Pivotter::set_domain_device(void)
+{
+    GLdouble _xmin = -9.0;
+    GLdouble _xmax = 11.0;
+    GLdouble _ymin = -11.0;
+    GLdouble _ymax = 9.0;
+    glLoadIdentity();
+    glViewport(BORDER, BORDER, w()-2*BORDER, h()-2*BORDER);
+    glOrtho(_xmin, _xmax, _ymin, _ymax, -1, 1);
+}
+
 void Pivotter::draw()
+{
+    // Clear screen
+    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    draw_decorations();
+
+    // Draw a graph
+    glPushMatrix();
+        set_domain_device();
+
+        glLineWidth(3.0);
+        glColor3ub(0xff, 0x00, 0x00);
+        glBegin(GL_LINE_STRIP);
+            glVertex2f(-9.0, -3.0);
+            glVertex2f(-5.0, 0.0);
+            glVertex2f(-4.0, 1.0);
+            glVertex2f(-3.0, -1.0);
+            glVertex2f(3.0, -5.0);
+            glVertex2f(4.0, -9.0);
+            glVertex2f(9.0, 6.0);
+        glEnd();
+    glPopMatrix();
+
+    return;
+}
+
+void Pivotter::draw_old()
 {
     // Refresh scaling
     glLoadIdentity();
@@ -149,47 +208,89 @@ void Pivotter::draw()
     }
 }
 
-void Pivotter::draw_text(double x, double y, string s, align_t halign, align_t valign)
+void Pivotter::draw_text_at_pixels(double x, double y, string s, hanchor_t halign, vanchor_t valign)
 {
-    // TODO: Align vertically and horizontally.
-    // [1] https://www.programming-techniques.com/2012/05/font-rendering-in-glut-using-bitmap-fonts-with-sample-example.html
+    double s_width = glutBitmapLength(FONT, (const unsigned char *)s.c_str());
+    double s_height = glutBitmapHeight(FONT);
 
-    glColor3ub(0x00, 0x00, 0x00);
-    // glColor3ub(0xff, 0x00, 0x00);
-    glRasterPos2f(x, y);
-    /* int w = glutBitmapLength(FONT, (const unsigned char *)s.c_str()); */
-    // glPushMatrix();
-    // glLoadIdentity();
-    for (unsigned int n = 0; n < s.length(); n++) {
-        glutBitmapCharacter(FONT, s[n]);
+    double x_offset;
+    double y_offset;
+
+    switch (halign) {
+    case HANCHOR_LEFT:
+        x_offset = 0;
+        break;
+    case HANCHOR_CENTER:
+        x_offset = s_width/2.0;
+        break;
+    case HANCHOR_RIGHT:
+        x_offset = s_width;
+        break;
     }
-    // glPopMatrix();
+
+    switch (valign) {
+    case VANCHOR_BOTTOM:
+        y_offset = 0;
+        break;
+    case VANCHOR_CENTER:
+        y_offset = s_height/2.0;
+        break;
+    case VANCHOR_TOP:
+        y_offset = s_height;
+        break;
+    }
+
+    glPushMatrix();
+        set_domain_pixels();
+
+        glColor3ub(0x00, 0x00, 0xff);
+        glRasterPos2f(x-x_offset, y-y_offset);
+        for (unsigned int n = 0; n < s.length(); n++) {
+            glutBitmapCharacter(FONT, s[n]);
+        }
+    glPopMatrix();
 }
 
 void Pivotter::draw_decorations(void)
 {
-    char s[MAX_LABEL_SIZE];
+    // Draw box axes
+    glPushMatrix();
+        set_domain_pixels();
 
-    // Draw outline
-    glLineWidth(3.0);
-    glColor3ub(0x00, 0x00, 0x00);
-    glBegin(GL_LINE_LOOP);
-        glVertex2f(xmin, ymin);
-        glVertex2f(xmin, ymax);
-        glVertex2f(xmax, ymax);
-        glVertex2f(xmax, ymin);
-    glEnd();
+        double bottom = BORDER;
+        double top = h()-BORDER;
+        double left = BORDER;
+        double right = w()-BORDER;
 
-    // Draw ticks
+        glLineWidth(1.0);
+        glColor3ub(0x00, 0x00, 0x00);
+        glBegin(GL_LINE_LOOP);
+            glVertex2f(left, bottom);
+            glVertex2f(left, top);
+            glVertex2f(right, top);
+            glVertex2f(right, bottom);
+        glEnd();
+        glBegin(GL_LINE_LOOP);
+            glVertex2f((left+right)/2.0, bottom);
+            glVertex2f((left+right)/2.0, top);
+        glEnd();
+        glBegin(GL_LINE_LOOP);
+            glVertex2f(left, (bottom+top)/2.0);
+            glVertex2f(right, (bottom+top)/2.0);
+        glEnd();
+    glPopMatrix();
 
-    // y = ax + b;
-    // b = y - ax;
-    // a = (y1-y0)/(x1-x0);
-    // a = (xmax-xmin)
-    // b = -a*xmin
+    // Draw text labels
+    draw_text_at_pixels(BORDER, BORDER, "YMIN", HANCHOR_RIGHT, VANCHOR_BOTTOM);
+    draw_text_at_pixels(BORDER, h()/2.0, "YMID", HANCHOR_RIGHT, VANCHOR_CENTER);
+    draw_text_at_pixels(BORDER, h()-BORDER, "YMAX", HANCHOR_RIGHT, VANCHOR_TOP);
 
-    snprintf(s, MAX_LABEL_SIZE, "x=(%.3g, %.3g) y=(%.3g, %.3g)", xmin, xmax, ymin, ymax);
-    draw_text(xmin, ymin, string(s), ALIGN_H_CENTER, ALIGN_V_BOTTOM);
+    draw_text_at_pixels(BORDER, BORDER, "XMIN", HANCHOR_LEFT, VANCHOR_TOP);
+    draw_text_at_pixels(w()/2.0, BORDER, "XMID", HANCHOR_CENTER, VANCHOR_TOP);
+    draw_text_at_pixels(w()-BORDER, BORDER, "XMAX", HANCHOR_RIGHT, VANCHOR_TOP);
+
+    return;
+
 }
 
 void Pivotter::add(double x, double y, string hue)
@@ -340,7 +441,7 @@ int main(int argc, char *argv[])
     }
 
     // Initialize GUI objects
-    Fl_Window win(500, 300, "Pivotter");
+    Fl_Window win(800, 600, "Pivotter");
     Pivotter pivotter(&source, 10, 10, win.w()-20, win.h()-20);
 
     // Set up GUI objects

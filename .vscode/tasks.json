@@ -4,9 +4,9 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Examples",
+            "label": "Build",
             "type": "shell",
-            "command": "make -C examples",
+            "command": "make",
             "group": {
                 "kind": "build",
                 "isDefault": true
