@@ -22,5 +22,23 @@
             "cwd": "${workspaceRoot}",
             "valuesFormatting": "parseText"
         },
+        {
+            "name": "it.cel.sets.p2_subset",
+            "type": "gdb",
+            "request": "launch",
+            "target": "./pivotter",
+            "arguments": "-x2 -y3 -u1 data/it.cel.sets.p2_subset.csv",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        },
+        {
+            "name": "it.cel.sets.p2_subset (output.csv)",
+            "type": "gdb",
+            "request": "launch",
+            "target": "./pivotter",
+            "arguments": "-x2 -y3 -u1 data/output.csv",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        },
     ]
 }
