@@ -87,9 +87,10 @@ private:
     bool style_scatter;
 
     void draw(void);
-    void draw_text_at_pixels(double x, double y, string s, hanchor_t halign, vanchor_t valign);
     void draw_decorations(void);
     void draw_graphs(void);
+
+    void draw_text_at_pixels(double x, double y, string s, hanchor_t halign, vanchor_t valign);
 
     void set_domain_pixels(void);
     void set_domain_device(void);
